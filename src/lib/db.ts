@@ -8,8 +8,16 @@ import type {
   UserSettings,
   VocabCard,
 } from '../types';
-import { STARTER_CARDS, STARTER_DECKS } from '../data/starterVocab';
+import {
+  LEGACY_STARTER_CARD_IDS,
+  LEGACY_STARTER_DECK_IDS,
+  STARTER_CARDS,
+  STARTER_DECKS,
+  V2_RETIRE_TIME,
+} from '../data/starterVocab';
 import { STARTER_LISTENING_EXERCISES } from '../data/starterListening';
+
+const CURRENT_STARTER_VERSION = 2;
 
 export class KotobaDatabase extends Dexie {
   decks!: Table<Deck, string>;
@@ -84,6 +92,7 @@ export async function ensureSeededDatabase(): Promise<UserSettings> {
     const initialSettings: UserSettings = {
       ...DEFAULT_SETTINGS,
       firebaseConfig: envConfig,
+      starterDataVersion: CURRENT_STARTER_VERSION,
     };
     await db.settings.put(initialSettings);
   } else if (!existingSettings.firebaseConfig && envConfig) {
@@ -91,9 +100,41 @@ export async function ensureSeededDatabase(): Promise<UserSettings> {
   }
 
   const deckCount = await db.decks.count();
+  const currentVersion = existingSettings?.starterDataVersion ?? 0;
+
   if (deckCount === 0) {
     await db.decks.bulkPut(STARTER_DECKS);
     await db.cards.bulkPut(STARTER_CARDS);
+    await db.settings.update('singleton', { starterDataVersion: CURRENT_STARTER_VERSION });
+  } else if (currentVersion < CURRENT_STARTER_VERSION) {
+    // One-time upgrade to v2: retire old sample starter decks & seed user's learn.apkg + 2 separate Kana alphabet decks
+    await db.transaction('rw', [db.decks, db.cards, db.settings], async () => {
+      for (const oldDeckId of LEGACY_STARTER_DECK_IDS) {
+        const d = await db.decks.get(oldDeckId);
+        if (d && !d.deleted) {
+          await db.decks.put({ ...d, deleted: true, updatedAt: V2_RETIRE_TIME });
+        }
+      }
+      for (const oldCardId of LEGACY_STARTER_CARD_IDS) {
+        const c = await db.cards.get(oldCardId);
+        if (c && !c.deleted) {
+          await db.cards.put({ ...c, deleted: true, updatedAt: V2_RETIRE_TIME });
+        }
+      }
+      for (const newDeck of STARTER_DECKS) {
+        const exists = await db.decks.get(newDeck.id);
+        if (!exists) {
+          await db.decks.put(newDeck);
+        }
+      }
+      for (const newCard of STARTER_CARDS) {
+        const exists = await db.cards.get(newCard.id);
+        if (!exists) {
+          await db.cards.put(newCard);
+        }
+      }
+      await db.settings.update('singleton', { starterDataVersion: CURRENT_STARTER_VERSION });
+    });
   }
 
   const exCount = await db.exercises.count();

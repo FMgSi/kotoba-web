@@ -444,7 +444,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.4 · Japanese handwriting engine powered by{' '}
+        KotobaLab v1.5 · Japanese handwriting engine powered by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"

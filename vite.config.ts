@@ -12,7 +12,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-          anki: ['jszip', 'sql.js'],
+          anki: ['jszip', 'sql.js', 'fzstd'],
           react: ['react', 'react-dom'],
           study: ['dexie', 'ts-fsrs', 'wanakana', 'lucide-react'],
         },

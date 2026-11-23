@@ -241,15 +241,29 @@ export const JapaneseHandwritingReview: React.FC<JapaneseHandwritingReviewProps>
                 className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900"
               >
                 <Lightbulb className="h-3.5 w-3.5" />
-                {showHint ? 'Ẩn gợi ý' : 'Gợi ý Romaji'}
+                {showHint ? 'Ẩn gợi ý' : 'Gợi ý'}
               </button>
             )}
           </div>
 
           {showHint && studyMode !== 'flip' && verifiedState === 'idle' && (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
-              {currentCard.romaji && <span>Romaji: <b>{currentCard.romaji}</b> ·</span>}
-              <span>Chữ đầu: <b className="font-jp text-sm">{targetCharArray[0]}</b></span>
+            <div className="mt-3 inline-flex flex-wrap items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-1.5 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+              {currentCard.notes && <span>{currentCard.notes}</span>}
+              {currentCard.romaji && currentCard.back !== currentCard.romaji && (
+                <span>
+                  Romaji: <b>{currentCard.romaji}</b>
+                </span>
+              )}
+              {targetCharArray.length > 1 && (
+                <span>
+                  Chữ đầu: <b className="font-jp text-sm">{targetCharArray[0]}</b>
+                </span>
+              )}
+              {currentCard.example && targetCharArray.length === 1 && (
+                <span>
+                  Ví dụ: <b className="font-jp">{currentCard.example}</b> ({currentCard.exampleVi})
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -303,7 +317,11 @@ export const JapaneseHandwritingReview: React.FC<JapaneseHandwritingReviewProps>
               <JapaneseHandwritingPad
                 key={`${currentCard.id}-${suggestedScope}`}
                 defaultScope={suggestedScope}
-                onCommitChar={(ch) => setAnswerChars((prev) => [...prev, ch])}
+                onCommitChar={(ch) =>
+                  setAnswerChars((prev) =>
+                    targetCharArray.length === 1 ? [ch] : [...prev, ch]
+                  )
+                }
               />
 
               {/* Verify Action Row */}

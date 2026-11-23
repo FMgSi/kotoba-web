@@ -323,7 +323,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({
                   Chọn file từ Anki (.apkg, .csv, .tsv, .txt)
                 </span>
                 <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Trong Anki chọn Export → <b>Anki Deck Package (.apkg)</b> (tick Support older Anki versions) hoặc <b>Notes in Plain Text (.txt)</b>
+                  Hỗ trợ cả bản <b>Anki mới (.apkg / zstd)</b>, bản cũ, và file <b>.csv / .tsv / .txt</b>
                 </span>
                 <input
                   type="file"

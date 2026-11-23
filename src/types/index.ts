@@ -118,6 +118,7 @@ export interface UserSettings {
   autoPlayAudio: boolean;
   firebaseConfig?: FirebaseConfigData;
   lastSyncedAt?: number;
+  starterDataVersion?: number;
 }
 
 export type SyncStatus = 'local' | 'syncing' | 'synced' | 'error';

@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import initSqlJs from 'sql.js';
+import { decompress } from 'fzstd';
 import type { Language, VocabCard } from '../types';
 
 function stripHtml(raw: string): string {
@@ -18,10 +19,8 @@ function stripHtml(raw: string): string {
 }
 
 function extractReadingFromFurigana(text: string): { cleanFront: string; reading?: string } {
-  // Handle Anki Japanese Support syntax like: 学生[がくせい] or 日[に]本[ほん]
   if (/\[[^\]]+\]/.test(text)) {
     const cleanFront = text.replace(/\[[^\]]+\]/g, '').replace(/\s+/g, '').trim();
-    // Extract kana inside brackets combined with existing kana
     let reading = '';
     const regex = /([^\s[\]]+)\[([^\]]+)\]|([^\s[\]]+)/g;
     let match: RegExpExecArray | null;
@@ -45,7 +44,8 @@ function buildNewCard(
   extra: Partial<VocabCard> = {}
 ): VocabCard {
   const now = Date.now();
-  const parsed = language === 'jp' ? extractReadingFromFurigana(frontRaw) : { cleanFront: frontRaw.trim() };
+  const parsed =
+    language === 'jp' ? extractReadingFromFurigana(frontRaw) : { cleanFront: frontRaw.trim() };
   return {
     id: `card-${now}-${Math.random().toString(36).slice(2, 9)}`,
     deckId,
@@ -78,14 +78,25 @@ export async function importApkgFile(
 ): Promise<{ cards: VocabCard[]; detectedDeckName?: string }> {
   const zip = await JSZip.loadAsync(file);
 
-  const dbEntry = zip.file('collection.anki21') || zip.file('collection.anki2');
-  if (!dbEntry) {
+  // Prefer modern Anki 2.1.50+ (zstd-compressed collection.anki21b), then collection.anki21, then legacy collection.anki2
+  let dbBytes: Uint8Array | null = null;
+  const anki21b = zip.file('collection.anki21b');
+  if (anki21b) {
+    const compressed = await anki21b.async('uint8array');
+    dbBytes = decompress(compressed);
+  } else {
+    const legacyEntry = zip.file('collection.anki21') || zip.file('collection.anki2');
+    if (legacyEntry) {
+      dbBytes = await legacyEntry.async('uint8array');
+    }
+  }
+
+  if (!dbBytes) {
     throw new Error(
-      'Không tìm thấy database Anki trong file .apkg (nếu là bản Anki 2.1.50+ nén zstd, vui lòng xuất lại dạng "Legacy .apkg" hoặc "Notes in Plain Text .txt").'
+      'Không tìm thấy database Anki trong file .apkg. Hãy kiểm tra lại file xuất từ Anki.'
     );
   }
 
-  const dbBytes = await dbEntry.async('uint8array');
   const SQL = await initSqlJs({
     locateFile: () => './sql-wasm.wasm',
     useOldExtensionFunctions: false,
@@ -94,17 +105,30 @@ export async function importApkgFile(
 
   try {
     let detectedDeckName: string | undefined;
+
+    // Anki 2.1.50+ stores decks in a dedicated `decks` table
     try {
-      const colRes = sqlDb.exec('SELECT decks FROM col LIMIT 1');
-      if (colRes[0]?.values?.[0]?.[0]) {
-        const decksObj = JSON.parse(String(colRes[0].values[0][0]));
-        const deckNames = Object.values(decksObj)
-          .map((d) => (d as { name?: string })?.name)
-          .filter((n): n is string => Boolean(n && n !== 'Default'));
-        if (deckNames.length > 0) detectedDeckName = deckNames[0];
+      const decksRes = sqlDb.exec('SELECT name FROM decks');
+      if (decksRes[0]?.values) {
+        const names = decksRes[0].values
+          .map((r) => String(r[0] ?? '').replace(/\x1f/g, ' :: '))
+          .filter((n) => n && n !== 'Default');
+        if (names.length > 0) detectedDeckName = names[0];
       }
     } catch {
-      // Optional metadata
+      // Fall back to legacy col.decks JSON
+      try {
+        const colRes = sqlDb.exec('SELECT decks FROM col LIMIT 1');
+        if (colRes[0]?.values?.[0]?.[0]) {
+          const decksObj = JSON.parse(String(colRes[0].values[0][0]));
+          const deckNames = Object.values(decksObj)
+            .map((d) => (d as { name?: string })?.name)
+            .filter((n): n is string => Boolean(n && n !== 'Default'));
+          if (deckNames.length > 0) detectedDeckName = deckNames[0];
+        }
+      } catch {
+        // Optional metadata
+      }
     }
 
     const notesRes = sqlDb.exec('SELECT flds, tags FROM notes');
@@ -122,7 +146,6 @@ export async function importApkgFile(
         let reading: string | undefined;
         let example: string | undefined;
 
-        // Many Japanese Anki decks use: [0] Expression/Kanji, [1] Reading/Kana, [2] Meaning
         if (language === 'jp' && fields.length >= 3 && /^[\u3040-\u30ff\s・ー]+$/.test(fields[1])) {
           reading = fields[1];
           back = fields[2];
@@ -172,7 +195,6 @@ export function importPlainTextOrCsv(
     } else if (line.includes(';')) {
       cols = line.split(';');
     } else {
-      // Simple CSV parser honoring quoted values
       cols = [];
       let current = '';
       let inQuotes = false;
@@ -284,7 +306,11 @@ export async function pullDeckFromAnkiConnect(
     let reading: string | undefined;
     let example: string | undefined;
 
-    if (language === 'jp' && orderedFields.length >= 3 && /^[\u3040-\u30ff\s・ー]+$/.test(orderedFields[1])) {
+    if (
+      language === 'jp' &&
+      orderedFields.length >= 3 &&
+      /^[\u3040-\u30ff\s・ー]+$/.test(orderedFields[1])
+    ) {
       reading = orderedFields[1];
       back = orderedFields[2];
       example = orderedFields[3];

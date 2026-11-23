@@ -1,34 +1,49 @@
 import type { Deck, VocabCard } from '../types';
+import { LEARN_APKG_CARDS } from './englishLearnDeck';
 
-const BASE_TIME = 1730000000000;
+// Deterministic timestamps (in the past) so cards are immediately due & multi-device sync never clobbers real reviews
+export const V2_SEED_TIME = 1795430000000;
+export const V2_RETIRE_TIME = 1795436700000;
+
+export const LEGACY_STARTER_DECK_IDS = [
+  'deck-en-a2-ielts',
+  'deck-jp-minna-1',
+  'deck-jp-katakana-life',
+];
+
+export const LEGACY_STARTER_CARD_IDS = [
+  ...Array.from({ length: 15 }, (_, i) => `en-${i + 1}`),
+  ...Array.from({ length: 14 }, (_, i) => `jp-${i + 1}`),
+  ...Array.from({ length: 6 }, (_, i) => `jp-k${i + 1}`),
+];
 
 export const STARTER_DECKS: Deck[] = [
   {
-    id: 'deck-en-a2-ielts',
-    name: 'English Core (A2 → IELTS 4.5)',
+    id: 'deck-en-learn-apkg',
+    name: 'learn (Anki Tiếng Anh — 202 thẻ)',
     language: 'en',
-    description: 'Từ vựng cốt lõi giao tiếp hằng ngày và nền tảng IELTS Listening/Reading.',
-    source: 'starter',
-    createdAt: BASE_TIME,
-    updatedAt: BASE_TIME,
+    description: 'Bộ từ vựng Tiếng Anh nhập trực tiếp từ file learn.apkg của bạn.',
+    source: 'anki',
+    createdAt: V2_SEED_TIME,
+    updatedAt: V2_SEED_TIME,
   },
   {
-    id: 'deck-jp-minna-1',
-    name: 'Minna no Nihongo — Bài 1 & 2 (Kana)',
+    id: 'deck-jp-hiragana-basic',
+    name: 'Bảng chữ cái Hiragana (46 chữ cơ bản)',
     language: 'jp',
-    description: 'Từ vựng Hiragana & Katakana cơ bản ngay sau khi học xong 2 bảng chữ cái.',
+    description: 'Luyện nghe, nhớ âm và viết tay cảm ứng từng chữ trong 46 chữ Hiragana cơ bản (あ → ん).',
     source: 'starter',
-    createdAt: BASE_TIME,
-    updatedAt: BASE_TIME,
+    createdAt: V2_SEED_TIME,
+    updatedAt: V2_SEED_TIME,
   },
   {
-    id: 'deck-jp-katakana-life',
-    name: 'Katakana Đời Sống (N5)',
+    id: 'deck-jp-katakana-basic',
+    name: 'Bảng chữ cái Katakana (46 chữ cơ bản)',
     language: 'jp',
-    description: 'Luyện viết tay các từ Katakana quen thuộc hay gặp nhất trong thực tế.',
+    description: 'Luyện nghe, nhớ âm và viết tay cảm ứng từng chữ trong 46 chữ Katakana cơ bản (ア → ン).',
     source: 'starter',
-    createdAt: BASE_TIME,
-    updatedAt: BASE_TIME,
+    createdAt: V2_SEED_TIME,
+    updatedAt: V2_SEED_TIME,
   },
 ];
 
@@ -46,7 +61,7 @@ function makeCard(
     language,
     front,
     back,
-    due: Date.now(),
+    due: V2_SEED_TIME,
     stability: 0,
     difficulty: 0,
     elapsedDays: 0,
@@ -54,256 +69,162 @@ function makeCard(
     reps: 0,
     lapses: 0,
     state: 0,
-    createdAt: BASE_TIME,
-    updatedAt: BASE_TIME,
+    createdAt: V2_SEED_TIME,
+    updatedAt: V2_SEED_TIME,
     ...extra,
   };
 }
 
+// [char, romaji, viGuide, exampleWord, exampleMeaning]
+const HIRAGANA_46: [string, string, string, string, string][] = [
+  ['あ', 'a', 'a (như "a")', 'あめ (ame)', 'mưa / kẹo'],
+  ['い', 'i', 'i (như "i")', 'いぬ (inu)', 'con chó'],
+  ['う', 'u', 'u (môi khép nhẹ, gần "ư")', 'うみ (umi)', 'biển'],
+  ['え', 'e', 'e (như "ê" nhẹ)', 'えき (eki)', 'nhà ga'],
+  ['お', 'o', 'o (như "ô" nhẹ)', 'おちゃ (ocha)', 'trà'],
+
+  ['か', 'ka', 'ka (ca)', 'かさ (kasa)', 'cái ô'],
+  ['き', 'ki', 'ki (ki)', 'き (ki)', 'cái cây'],
+  ['く', 'ku', 'ku (cư)', 'くつ (kutsu)', 'đôi giày'],
+  ['け', 'ke', 'ke (kê)', 'けさ (kesa)', 'sáng nay'],
+  ['こ', 'ko', 'ko (cô)', 'こども (kodomo)', 'trẻ em'],
+
+  ['さ', 'sa', 'sa (xa)', 'さかな (sakana)', 'con cá'],
+  ['し', 'shi', 'shi (si / xi nhẹ)', 'しろ (shiro)', 'màu trắng'],
+  ['す', 'su', 'su (xư)', 'すし (sushi)', 'sushi'],
+  ['せ', 'se', 'se (xê)', 'せんせい (sensei)', 'giáo viên'],
+  ['そ', 'so', 'so (xô)', 'そら (sora)', 'bầu trời'],
+
+  ['た', 'ta', 'ta (ta)', 'たまご (tamago)', 'quả trứng'],
+  ['ち', 'chi', 'chi (chi)', 'ちず (chizu)', 'bản đồ'],
+  ['つ', 'tsu', 'tsu (tsư)', 'つくえ (tsukue)', 'cái bàn'],
+  ['て', 'te', 'te (tê)', 'て (te)', 'bàn tay'],
+  ['と', 'to', 'to (tô)', 'とけい (tokei)', 'đồng hồ'],
+
+  ['な', 'na', 'na (na)', 'なつ (natsu)', 'mùa hè'],
+  ['に', 'ni', 'ni (ni)', 'にほん (nihon)', 'Nhật Bản'],
+  ['ぬ', 'nu', 'nu (nư)', 'いぬ (inu)', 'con chó'],
+  ['ね', 'ne', 'ne (nê)', 'ねこ (neko)', 'con mèo'],
+  ['の', 'no', 'no (nô)', 'のむ (nomu)', 'uống'],
+
+  ['は', 'ha', 'ha (ha)', 'はな (hana)', 'bông hoa'],
+  ['ひ', 'hi', 'hi (hi)', 'ひと (hito)', 'con người'],
+  ['ふ', 'fu', 'fu (phư / hư nhẹ)', 'ふゆ (fuyu)', 'mùa đông'],
+  ['へ', 'he', 'he (hê)', 'へや (heya)', 'căn phòng'],
+  ['ほ', 'ho', 'ho (hô)', 'ほん (hon)', 'quyển sách'],
+
+  ['ま', 'ma', 'ma (ma)', 'まど (mado)', 'cửa sổ'],
+  ['み', 'mi', 'mi (mi)', 'みず (mizu)', 'nước'],
+  ['む', 'mu', 'mu (mư)', 'むし (mushi)', 'côn trùng'],
+  ['め', 'me', 'me (mê)', 'め (me)', 'đôi mắt'],
+  ['も', 'mo', 'mo (mô)', 'もも (momo)', 'quả đào'],
+
+  ['や', 'ya', 'ya (da / ia)', 'やま (yama)', 'ngọn núi'],
+  ['ゆ', 'yu', 'yu (du / iu)', 'ゆき (yuki)', 'tuyết'],
+  ['よ', 'yo', 'yo (dô / iô)', 'よる (yoru)', 'ban đêm'],
+
+  ['ら', 'ra', 'ra (ra / la nhẹ)', 'らいねん (rainen)', 'năm sau'],
+  ['り', 'ri', 'ri (ri / li nhẹ)', 'りんご (ringo)', 'quả táo'],
+  ['る', 'ru', 'ru (rư / lư nhẹ)', 'くるま (kuruma)', 'xe ô tô'],
+  ['れ', 're', 're (rê / lê nhẹ)', 'れいぞうこ (reizouko)', 'tủ lạnh'],
+  ['ろ', 'ro', 'ro (rô / lô nhẹ)', 'ろく (roku)', 'số 6'],
+
+  ['わ', 'wa', 'wa (oa)', 'わたし (watashi)', 'tôi'],
+  ['を', 'wo', 'wo / o (trợ từ "ô")', 'みずを のむ (mizu o nomu)', 'uống nước'],
+  ['ん', 'n', 'n (âm mũi "n/m/ng")', 'にほん (nihon)', 'Nhật Bản'],
+];
+
+const KATAKANA_46: [string, string, string, string, string][] = [
+  ['ア', 'a', 'a (Katakana)', 'アイス (aisu)', 'kem'],
+  ['イ', 'i', 'i (Katakana)', 'インク (inku)', 'mực'],
+  ['ウ', 'u', 'u (Katakana)', 'ウイルス (uirusu)', 'vi-rút'],
+  ['エ', 'e', 'e (Katakana)', 'エアコン (eakon)', 'máy lạnh'],
+  ['オ', 'o', 'o (Katakana)', 'オレンジ (orenji)', 'quả cam'],
+
+  ['カ', 'ka', 'ka (Katakana)', 'カメラ (kamera)', 'máy ảnh'],
+  ['キ', 'ki', 'ki (Katakana)', 'キウイ (kiui)', 'quả kiwi'],
+  ['ク', 'ku', 'ku (Katakana)', 'クラス (kurasu)', 'lớp học'],
+  ['ケ', 'ke', 'ke (Katakana)', 'ケーキ (keeki)', 'bánh kem'],
+  ['コ', 'ko', 'ko (Katakana)', 'コーヒー (koohii)', 'cà phê'],
+
+  ['サ', 'sa', 'sa (Katakana)', 'サラダ (sarada)', 'xà lách'],
+  ['シ', 'shi', 'shi (Katakana — 2 chấm nằm ngang)', 'シャツ (shatsu)', 'áo sơ mi'],
+  ['ス', 'su', 'su (Katakana)', 'スポーツ (supootsu)', 'thể thao'],
+  ['セ', 'se', 'se (Katakana)', 'セーター (seetaa)', 'áo len'],
+  ['ソ', 'so', 'so (Katakana — 1 chấm dựng xuống)', 'ソファ (sofa)', 'ghế sofa'],
+
+  ['タ', 'ta', 'ta (Katakana)', 'タクシー (takushii)', 'xe taxi'],
+  ['チ', 'chi', 'chi (Katakana)', 'チーズ (chiizu)', 'phô mai'],
+  ['ツ', 'tsu', 'tsu (Katakana — 2 chấm dựng đứng)', 'ツアー (tsuaa)', 'chuyến du lịch'],
+  ['テ', 'te', 'te (Katakana)', 'テレビ (terebi)', 'tivi'],
+  ['ト', 'to', 'to (Katakana)', 'トマト (tomato)', 'cà chua'],
+
+  ['ナ', 'na', 'na (Katakana)', 'ナイフ (naifu)', 'con dao'],
+  ['ニ', 'ni', 'ni (Katakana)', 'ニュース (nyuusu)', 'tin tức'],
+  ['ヌ', 'nu', 'nu (Katakana)', 'ヌードル (nuudoru)', 'mì'],
+  ['ネ', 'ne', 'ne (Katakana)', 'ネクタイ (nekutai)', 'cà vạt'],
+  ['ノ', 'no', 'no (Katakana)', 'ノート (nooto)', 'quyển vở'],
+
+  ['ハ', 'ha', 'ha (Katakana)', 'ハンバーガー (hanbaagaa)', 'bánh hamburger'],
+  ['ヒ', 'hi', 'hi (Katakana)', 'ヒント (hinto)', 'gợi ý'],
+  ['フ', 'fu', 'fu (Katakana)', 'フルーツ (furuutsu)', 'trái cây'],
+  ['ヘ', 'he', 'he (Katakana)', 'ヘルメット (herumetto)', 'mũ bảo hiểm'],
+  ['ホ', 'ho', 'ho (Katakana)', 'ホテル (hoteru)', 'khách sạn'],
+
+  ['マ', 'ma', 'ma (Katakana)', 'マスク (masuku)', 'khẩu trang'],
+  ['ミ', 'mi', 'mi (Katakana)', 'ミルク (miruku)', 'sữa'],
+  ['ム', 'mu', 'mu (Katakana)', 'ムード (muudo)', 'tâm trạng'],
+  ['メ', 'me', 'me (Katakana)', 'メモ (memo)', 'ghi chú'],
+  ['モ', 'mo', 'mo (Katakana)', 'モニター (monitaa)', 'màn hình'],
+
+  ['ヤ', 'ya', 'ya (Katakana)', 'ヤシ (yashi)', 'cây dừa'],
+  ['ユ', 'yu', 'yu (Katakana)', 'ユニフォーム (yunifoomu)', 'đồng phục'],
+  ['ヨ', 'yo', 'yo (Katakana)', 'ヨーグルト (yooguruto)', 'sữa chua'],
+
+  ['ラ', 'ra', 'ra (Katakana)', 'ラーメン (raamen)', 'mì ramen'],
+  ['リ', 'ri', 'ri (Katakana)', 'リスト (risuto)', 'danh sách'],
+  ['ル', 'ru', 'ru (Katakana)', 'ルール (ruuru)', 'quy tắc'],
+  ['レ', 're', 're (Katakana)', 'レモン (remon)', 'quả chanh'],
+  ['ロ', 'ro', 'ro (Katakana)', 'ロボット (robotto)', 'rô-bốt'],
+
+  ['ワ', 'wa', 'wa (Katakana)', 'ワイン (wain)', 'rượu vang'],
+  ['ヲ', 'wo', 'wo / o (Katakana)', 'ヲ (wo)', 'âm wo trong Katakana'],
+  ['ン', 'n', 'n (Katakana — chấm ngang, kéo lên)', 'パン (pan)', 'bánh mì'],
+];
+
+const ENGLISH_LEARN_CARDS: VocabCard[] = LEARN_APKG_CARDS.map((raw) =>
+  makeCard(raw.id, 'deck-en-learn-apkg', 'en', raw.front, raw.back, {
+    reading: raw.reading,
+    example: raw.example,
+    exampleVi: raw.exampleVi,
+    tags: raw.tags ?? ['learn-apkg'],
+  })
+);
+
+const HIRAGANA_CARDS: VocabCard[] = HIRAGANA_46.map(([ch, romaji, guide, ex, exVi], idx) =>
+  makeCard(`jp-hira-${idx + 1}`, 'deck-jp-hiragana-basic', 'jp', ch, `${romaji}`, {
+    reading: ch,
+    romaji,
+    example: ex,
+    exampleVi: exVi,
+    notes: `Cách đọc: ${guide}`,
+    tags: ['hiragana', 'alphabet'],
+  })
+);
+
+const KATAKANA_CARDS: VocabCard[] = KATAKANA_46.map(([ch, romaji, guide, ex, exVi], idx) =>
+  makeCard(`jp-kata-${idx + 1}`, 'deck-jp-katakana-basic', 'jp', ch, `${romaji}`, {
+    reading: ch,
+    romaji,
+    example: ex,
+    exampleVi: exVi,
+    notes: `Cách đọc: ${guide}`,
+    tags: ['katakana', 'alphabet'],
+  })
+);
+
 export const STARTER_CARDS: VocabCard[] = [
-  // English A2 -> IELTS 4.5 foundation
-  makeCard('en-1', 'deck-en-a2-ielts', 'en', 'schedule', 'lịch trình, thời gian biểu', {
-    reading: '/ˈʃedʒuːl/',
-    example: 'I have a busy schedule this week.',
-    exampleVi: 'Tuần này tôi có một lịch trình bận rộn.',
-    tags: ['ielts-part1', 'daily'],
-  }),
-  makeCard('en-2', 'deck-en-a2-ielts', 'en', 'improve', 'cải thiện, nâng cao', {
-    reading: '/ɪmˈpruːv/',
-    example: 'Listening every day helps improve your English.',
-    exampleVi: 'Nghe mỗi ngày giúp cải thiện tiếng Anh của bạn.',
-    tags: ['study', 'verb'],
-  }),
-  makeCard('en-3', 'deck-en-a2-ielts', 'en', 'comfortable', 'thoải mái, dễ chịu', {
-    reading: '/ˈkʌmfətəbl/',
-    example: 'This chair is very comfortable to sit in.',
-    exampleVi: 'Chiếc ghế này ngồi rất thoải mái.',
-    tags: ['daily', 'adj'],
-  }),
-  makeCard('en-4', 'deck-en-a2-ielts', 'en', 'available', 'có sẵn, rảnh rỗi', {
-    reading: '/əˈveɪləbl/',
-    example: 'Are you available for a meeting tomorrow?',
-    exampleVi: 'Ngày mai bạn có rảnh để họp không?',
-    tags: ['ielts-part1', 'adj'],
-  }),
-  makeCard('en-5', 'deck-en-a2-ielts', 'en', 'neighborhood', 'khu dân cư, vùng lân cận', {
-    reading: '/ˈneɪbəhʊd/',
-    example: 'We live in a quiet neighborhood near the park.',
-    exampleVi: 'Chúng tôi sống ở một khu dân cư yên tĩnh gần công viên.',
-    tags: ['ielts', 'noun'],
-  }),
-  makeCard('en-6', 'deck-en-a2-ielts', 'en', 'experience', 'kinh nghiệm, trải nghiệm', {
-    reading: '/ɪkˈspɪəriəns/',
-    example: 'Traveling alone was a great experience.',
-    exampleVi: 'Đi du lịch một mình là một trải nghiệm tuyệt vời.',
-    tags: ['ielts', 'noun'],
-  }),
-  makeCard('en-7', 'deck-en-a2-ielts', 'en', 'recommend', 'giới thiệu, khuyên dùng', {
-    reading: '/ˌrekəˈmend/',
-    example: 'Can you recommend a good restaurant nearby?',
-    exampleVi: 'Bạn có thể giới thiệu một nhà hàng ngon gần đây không?',
-    tags: ['daily', 'verb'],
-  }),
-  makeCard('en-8', 'deck-en-a2-ielts', 'en', 'borrow', 'mượn (của ai đó)', {
-    reading: '/ˈbɒrəʊ/',
-    example: 'You can borrow up to five books from the library.',
-    exampleVi: 'Bạn có thể mượn tối đa 5 cuốn sách từ thư viện.',
-    tags: ['ielts-part1', 'verb'],
-  }),
-  makeCard('en-9', 'deck-en-a2-ielts', 'en', 'decision', 'quyết định', {
-    reading: '/dɪˈsɪʒn/',
-    example: 'Learning two languages is a smart decision.',
-    exampleVi: 'Học hai ngoại ngữ là một quyết định thông minh.',
-    tags: ['noun'],
-  }),
-  makeCard('en-10', 'deck-en-a2-ielts', 'en', 'environment', 'môi trường', {
-    reading: '/ɪnˈvaɪrənmənt/',
-    example: 'We should protect the local environment.',
-    exampleVi: 'Chúng ta nên bảo vệ môi trường địa phương.',
-    tags: ['ielts', 'noun'],
-  }),
-  makeCard('en-11', 'deck-en-a2-ielts', 'en', 'public transport', 'giao thông công cộng', {
-    reading: '/ˈpʌblɪk ˈtrænspɔːt/',
-    example: 'Many people use public transport to go to work.',
-    exampleVi: 'Nhiều người dùng phương tiện công cộng để đi làm.',
-    tags: ['ielts', 'phrase'],
-  }),
-  makeCard('en-12', 'deck-en-a2-ielts', 'en', 'reservation', 'sự đặt chỗ trước', {
-    reading: '/ˌrezəˈveɪʃn/',
-    example: 'I would like to make a reservation for two.',
-    exampleVi: 'Tôi muốn đặt bàn cho hai người.',
-    tags: ['ielts-part1', 'travel'],
-  }),
-  makeCard('en-13', 'deck-en-a2-ielts', 'en', 'prepare', 'chuẩn bị', {
-    reading: '/prɪˈpeə(r)/',
-    example: 'She wakes up early to prepare breakfast.',
-    exampleVi: 'Cô ấy dậy sớm để chuẩn bị bữa sáng.',
-    tags: ['daily', 'verb'],
-  }),
-  makeCard('en-14', 'deck-en-a2-ielts', 'en', 'convenient', 'tiện lợi, thuận tiện', {
-    reading: '/kənˈviːniənt/',
-    example: 'The bus stop is very convenient for students.',
-    exampleVi: 'Trạm xe buýt rất thuận tiện cho sinh viên.',
-    tags: ['ielts', 'adj'],
-  }),
-  makeCard('en-15', 'deck-en-a2-ielts', 'en', 'habit', 'thói quen', {
-    reading: '/ˈhæbɪt/',
-    example: 'Reviewing flashcards is a good daily habit.',
-    exampleVi: 'Ôn thẻ từ vựng là một thói quen tốt hằng ngày.',
-    tags: ['daily', 'noun'],
-  }),
-
-  // Japanese Minna no Nihongo Lesson 1 & 2 (Hiragana-first for post-Kana learners)
-  makeCard('jp-1', 'deck-jp-minna-1', 'jp', 'わたし', 'tôi', {
-    reading: 'わたし',
-    romaji: 'watashi',
-    example: 'わたしは べとなむじんです。',
-    exampleVi: 'Tôi là người Việt Nam.',
-    notes: 'Kanji sau này: 私',
-    tags: ['minna-1', 'hiragana'],
-  }),
-  makeCard('jp-2', 'deck-jp-minna-1', 'jp', 'せんせい', 'giáo viên, thầy/cô', {
-    reading: 'せんせい',
-    romaji: 'sensei',
-    example: 'やまださんは せんせいです。',
-    exampleVi: 'Anh/Chị Yamada là giáo viên.',
-    notes: 'Kanji sau này: 先生',
-    tags: ['minna-1', 'hiragana'],
-  }),
-  makeCard('jp-3', 'deck-jp-minna-1', 'jp', 'がくせい', 'học sinh, sinh viên', {
-    reading: 'がくせい',
-    romaji: 'gakusei',
-    example: 'わたしは がくせいです。',
-    exampleVi: 'Tôi là sinh viên.',
-    notes: 'Kanji sau này: 学生',
-    tags: ['minna-1', 'hiragana'],
-  }),
-  makeCard('jp-4', 'deck-jp-minna-1', 'jp', 'にほん', 'Nhật Bản', {
-    reading: 'にほん',
-    romaji: 'nihon',
-    example: 'にほんの りょうりが すきです。',
-    exampleVi: 'Tôi thích món ăn Nhật Bản.',
-    notes: 'Kanji sau này: 日本',
-    tags: ['minna-1', 'hiragana'],
-  }),
-  makeCard('jp-5', 'deck-jp-minna-1', 'jp', 'みず', 'nước', {
-    reading: 'みず',
-    romaji: 'mizu',
-    example: 'みずを ください。',
-    exampleVi: 'Cho tôi xin nước.',
-    notes: 'Kanji sau này: 水',
-    tags: ['n5', 'hiragana'],
-  }),
-  makeCard('jp-6', 'deck-jp-minna-1', 'jp', 'ほん', 'sách', {
-    reading: 'ほん',
-    romaji: 'hon',
-    example: 'これは にほんごの ほんです。',
-    exampleVi: 'Đây là quyển sách tiếng Nhật.',
-    notes: 'Kanji sau này: 本',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-7', 'deck-jp-minna-1', 'jp', 'つくえ', 'cái bàn', {
-    reading: 'つくえ',
-    romaji: 'tsukue',
-    example: 'つくえの うえに ほんが あります。',
-    exampleVi: 'Trên bàn có quyển sách.',
-    notes: 'Kanji sau này: 机',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-8', 'deck-jp-minna-1', 'jp', 'いす', 'cái ghế', {
-    reading: 'いす',
-    romaji: 'isu',
-    example: 'いすに すわります。',
-    exampleVi: 'Ngồi lên ghế.',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-9', 'deck-jp-minna-1', 'jp', 'かぎ', 'chìa khóa', {
-    reading: 'かぎ',
-    romaji: 'kagi',
-    example: 'それは わたしの かぎです。',
-    exampleVi: 'Cái đó là chìa khóa của tôi.',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-10', 'deck-jp-minna-1', 'jp', 'とけい', 'đồng hồ', {
-    reading: 'とけい',
-    romaji: 'tokei',
-    example: 'これは にほんの とけいです。',
-    exampleVi: 'Đây là chiếc đồng hồ của Nhật.',
-    notes: 'Kanji sau này: 時計',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-11', 'deck-jp-minna-1', 'jp', 'かさ', 'cái ô (dù)', {
-    reading: 'かさ',
-    romaji: 'kasa',
-    example: 'あめですから、かさを もっていきます。',
-    exampleVi: 'Vì trời mưa nên tôi mang theo ô.',
-    notes: 'Kanji sau này: 傘',
-    tags: ['minna-2', 'hiragana'],
-  }),
-  makeCard('jp-12', 'deck-jp-minna-1', 'jp', 'おはよう', 'chào buổi sáng', {
-    reading: 'おはよう',
-    romaji: 'ohayou',
-    example: 'おはようございます！',
-    exampleVi: 'Chào buổi sáng ạ!',
-    tags: ['greeting', 'hiragana'],
-  }),
-  makeCard('jp-13', 'deck-jp-minna-1', 'jp', 'ありがとう', 'cảm ơn', {
-    reading: 'ありがとう',
-    romaji: 'arigatou',
-    example: 'どうも ありがとうございます。',
-    exampleVi: 'Xin chân thành cảm ơn.',
-    tags: ['greeting', 'hiragana'],
-  }),
-  makeCard('jp-14', 'deck-jp-minna-1', 'jp', 'ともだち', 'bạn bè', {
-    reading: 'ともだち',
-    romaji: 'tomodachi',
-    example: 'ともだちと にほんごを べんきょうします。',
-    exampleVi: 'Tôi học tiếng Nhật cùng bạn bè.',
-    notes: 'Kanji sau này: 友達',
-    tags: ['n5', 'hiragana'],
-  }),
-
-  // Japanese Katakana life
-  makeCard('jp-k1', 'deck-jp-katakana-life', 'jp', 'カメラ', 'máy ảnh', {
-    reading: 'カメラ',
-    romaji: 'kamera',
-    example: 'あたらしい カメラが ほしいです。',
-    exampleVi: 'Tôi muốn một chiếc máy ảnh mới.',
-    tags: ['katakana', 'minna-2'],
-  }),
-  makeCard('jp-k2', 'deck-jp-katakana-life', 'jp', 'テレビ', 'tivi', {
-    reading: 'テレビ',
-    romaji: 'terebi',
-    example: 'まいにち テレビを みます。',
-    exampleVi: 'Mỗi ngày tôi xem tivi.',
-    tags: ['katakana', 'minna-2'],
-  }),
-  makeCard('jp-k3', 'deck-jp-katakana-life', 'jp', 'パン', 'bánh mì', {
-    reading: 'パン',
-    romaji: 'pan',
-    example: 'あさ パンを たべます。',
-    exampleVi: 'Buổi sáng tôi ăn bánh mì.',
-    tags: ['katakana', 'food'],
-  }),
-  makeCard('jp-k4', 'deck-jp-katakana-life', 'jp', 'ペン', 'cây bút', {
-    reading: 'ペン',
-    romaji: 'pen',
-    example: 'これは わたしの ペンです。',
-    exampleVi: 'Đây là cây bút của tôi.',
-    tags: ['katakana', 'minna-2'],
-  }),
-  makeCard('jp-k5', 'deck-jp-katakana-life', 'jp', 'ノート', 'quyển vở', {
-    reading: 'ノート',
-    romaji: 'nooto',
-    example: 'ノートに かんじを かきます。',
-    exampleVi: 'Tôi viết Kanji vào vở.',
-    tags: ['katakana', 'minna-2'],
-  }),
-  makeCard('jp-k6', 'deck-jp-katakana-life', 'jp', 'コーヒー', 'cà phê', {
-    reading: 'コーヒー',
-    romaji: 'koohii',
-    example: 'コーヒーを のみます。',
-    exampleVi: 'Tôi uống cà phê.',
-    tags: ['katakana', 'food'],
-  }),
+  ...ENGLISH_LEARN_CARDS,
+  ...HIRAGANA_CARDS,
+  ...KATAKANA_CARDS,
 ];
