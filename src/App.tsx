@@ -5,6 +5,7 @@ import {
   Headphones,
   BookOpenCheck,
   PenLine,
+  Settings,
   Cloud,
   RefreshCw,
   Moon,
@@ -39,7 +40,7 @@ const NAV_ITEMS: { id: NavTab; label: string; shortLabel: string; icon: React.Co
   { id: 'listening', label: 'Luyện Nghe', shortLabel: 'Nghe', icon: Headphones },
   { id: 'reading', label: 'Đọc', shortLabel: 'Đọc', icon: BookOpenCheck },
   { id: 'writing', label: 'Viết', shortLabel: 'Viết', icon: PenLine },
-  { id: 'settings', label: 'Đồng bộ Firebase', shortLabel: 'Sync', icon: Cloud },
+  { id: 'settings', label: 'Cài đặt', shortLabel: 'Cài đặt', icon: Settings },
 ];
 
 export default function App() {
