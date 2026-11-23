@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    font-family: 'Inter', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
+  }
+
+  .font-jp {
+    font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  }
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
+/* Handwriting canvas paper guidelines */
+.writing-grid {
+  background-image:
+    linear-gradient(to right, rgba(99, 102, 241, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.14) 1px, transparent 1px);
+  background-size: 50% 50%;
+  background-position: -0.5px -0.5px;
+}
