@@ -97,7 +97,14 @@ export interface FirebaseConfigData {
   storageBucket?: string;
   messagingSenderId?: string;
   appId: string;
-  syncSpaceId: string;
+  syncSpaceId?: string;
+}
+
+export interface AuthUserInfo {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
 }
 
 export interface UserSettings {

@@ -1,7 +1,20 @@
 import { deleteApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, type Auth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  getAuth,
+  getRedirectResult,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type Auth,
+  type User,
+} from 'firebase/auth';
 import { doc, getDoc, getFirestore, setDoc, type Firestore } from 'firebase/firestore';
 import type {
+  AuthUserInfo,
   DailyActivity,
   Deck,
   FirebaseConfigData,
@@ -17,12 +30,22 @@ let activeAuth: Auth | null = null;
 let activeConfigSignature = '';
 
 function configSignature(cfg: FirebaseConfigData): string {
-  return `${cfg.projectId}|${cfg.apiKey}|${cfg.appId}|${cfg.syncSpaceId}`;
+  return `${cfg.projectId}|${cfg.apiKey}|${cfg.appId}`;
 }
 
-export async function ensureFirebaseReady(
+function toAuthUserInfo(user: User | null): AuthUserInfo | null {
+  if (!user) return null;
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+  };
+}
+
+export async function initFirebaseClient(
   config: FirebaseConfigData
-): Promise<{ firestore: Firestore; uid: string }> {
+): Promise<{ firestore: Firestore; auth: Auth }> {
   const sig = configSignature(config);
   if (!activeApp || activeConfigSignature !== sig) {
     for (const app of getApps()) {
@@ -37,30 +60,81 @@ export async function ensureFirebaseReady(
         messagingSenderId: config.messagingSenderId?.trim() || undefined,
         appId: config.appId.trim(),
       },
-      'kotoba-lab-sync'
+      'kotoba-lab-auth'
     );
     activeDb = getFirestore(activeApp);
     activeAuth = getAuth(activeApp);
     activeConfigSignature = sig;
+
+    try {
+      await setPersistence(activeAuth, browserLocalPersistence);
+    } catch {
+      // Fallback to default persistence if browser restricts IndexedDB persistence
+    }
+
+    // Complete redirect sign-in if returning from mobile Google redirect flow
+    try {
+      await getRedirectResult(activeAuth);
+    } catch {
+      // Ignore redirect notice
+    }
   }
 
   if (!activeAuth || !activeDb) {
     throw new Error('Không thể khởi tạo Firebase.');
   }
+  return { firestore: activeDb, auth: activeAuth };
+}
 
-  // Silent auto-login via Firebase Anonymous Auth (persists automatically in browser IndexedDB)
-  let uid = activeAuth.currentUser?.uid || 'anonymous-fallback';
+export async function subscribeGoogleAuth(
+  config: FirebaseConfigData,
+  callback: (user: AuthUserInfo | null) => void
+): Promise<() => void> {
+  const { auth } = await initFirebaseClient(config);
+  return onAuthStateChanged(auth, (user) => {
+    callback(toAuthUserInfo(user));
+  });
+}
+
+export async function signInWithGoogleAccount(
+  config: FirebaseConfigData
+): Promise<AuthUserInfo | null> {
+  const { auth } = await initFirebaseClient(config);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
   try {
-    if (!activeAuth.currentUser) {
-      const cred = await signInAnonymously(activeAuth);
-      uid = cred.user.uid;
-    }
+    const result = await signInWithPopup(auth, provider);
+    return toAuthUserInfo(result.user);
   } catch (err) {
-    // Allow Firestore sync even if user hasn't turned on Anonymous Auth yet (e.g., rules only check workspace key)
-    console.warn('Firebase Anonymous Auth notice:', err);
+    const code = (err as { code?: string })?.code || '';
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+    if (code === 'auth/unauthorized-domain') {
+      throw new Error(
+        `Domain "${window.location.hostname}" chưa được cấp phép trong Firebase Authentication → Settings → Authorized domains.`
+      );
+    }
+    if (code === 'auth/operation-not-allowed') {
+      throw new Error(
+        'Bạn chưa bật nhà cung cấp Google trong Firebase Console → Authentication → Sign-in method → Google.'
+      );
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      throw new Error('Bạn đã đóng cửa sổ đăng nhập Google.');
+    }
+    throw err;
   }
+}
 
-  return { firestore: activeDb, uid };
+export async function signOutGoogleAccount(config: FirebaseConfigData): Promise<void> {
+  const { auth } = await initFirebaseClient(config);
+  await signOut(auth);
 }
 
 function mergeByUpdatedAt<T extends { updatedAt: number }>(
@@ -91,7 +165,6 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 }
 
 function sanitizeForFirestore<T>(value: T): T {
-  // Firestore rejects explicit `undefined` values
   return JSON.parse(JSON.stringify(value));
 }
 
@@ -103,18 +176,18 @@ export interface SyncSummary {
 }
 
 export async function syncWithFirebase(config: FirebaseConfigData): Promise<SyncSummary> {
-  const spaceId = config.syncSpaceId.trim().replace(/[^a-zA-Z0-9_-]/g, '');
-  if (!spaceId) {
-    throw new Error('Vui lòng nhập Mã đồng bộ cá nhân (Sync Space ID).');
+  const { firestore, auth } = await initFirebaseClient(config);
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Vui lòng đăng nhập tài khoản Google trước khi đồng bộ.');
   }
 
-  const { firestore } = await ensureFirebaseReady(config);
-
-  const metaRef = doc(firestore, 'kotoba_spaces', spaceId, 'data', 'meta');
-  const decksRef = doc(firestore, 'kotoba_spaces', spaceId, 'data', 'decks');
-  const exercisesRef = doc(firestore, 'kotoba_spaces', spaceId, 'data', 'exercises');
-  const progressRef = doc(firestore, 'kotoba_spaces', spaceId, 'data', 'progress');
-  const activityRef = doc(firestore, 'kotoba_spaces', spaceId, 'data', 'activity');
+  const uid = currentUser.uid;
+  const metaRef = doc(firestore, 'users', uid, 'kotoba_data', 'meta');
+  const decksRef = doc(firestore, 'users', uid, 'kotoba_data', 'decks');
+  const exercisesRef = doc(firestore, 'users', uid, 'kotoba_data', 'exercises');
+  const progressRef = doc(firestore, 'users', uid, 'kotoba_data', 'progress');
+  const activityRef = doc(firestore, 'users', uid, 'kotoba_data', 'activity');
 
   const [metaSnap, decksSnap, exercisesSnap, progressSnap, activitySnap] = await Promise.all([
     getDoc(metaRef),
@@ -128,7 +201,7 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
   const remoteCards: VocabCard[] = [];
   const chunkSnaps = await Promise.all(
     Array.from({ length: remoteCardChunksCount }, (_, i) =>
-      getDoc(doc(firestore, 'kotoba_spaces', spaceId, 'data', `cards_${i}`))
+      getDoc(doc(firestore, 'users', uid, 'kotoba_data', `cards_${i}`))
     )
   );
   for (const snap of chunkSnaps) {
@@ -157,7 +230,6 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
 
   const syncedAt = Date.now();
 
-  // Save merged state back to local IndexedDB
   await db.transaction(
     'rw',
     [db.decks, db.cards, db.exercises, db.listeningProgress, db.dailyActivity, db.settings],
@@ -171,16 +243,19 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
     }
   );
 
-  // Push merged state back to Firestore (chunk cards 300/doc to stay well under 1MB limit)
   const cardChunks = chunkArray(mergedCards, 300);
   await Promise.all([
-    setDoc(metaRef, { cardChunks: cardChunks.length, updatedAt: syncedAt }),
+    setDoc(metaRef, {
+      cardChunks: cardChunks.length,
+      email: currentUser.email,
+      updatedAt: syncedAt,
+    }),
     setDoc(decksRef, { items: sanitizeForFirestore(mergedDecks), updatedAt: syncedAt }),
     setDoc(exercisesRef, { items: sanitizeForFirestore(mergedExercises), updatedAt: syncedAt }),
     setDoc(progressRef, { items: sanitizeForFirestore(mergedProgress), updatedAt: syncedAt }),
     setDoc(activityRef, { items: sanitizeForFirestore(mergedActivity), updatedAt: syncedAt }),
     ...cardChunks.map((chunk, i) =>
-      setDoc(doc(firestore, 'kotoba_spaces', spaceId, 'data', `cards_${i}`), {
+      setDoc(doc(firestore, 'users', uid, 'kotoba_data', `cards_${i}`), {
         items: sanitizeForFirestore(chunk),
         updatedAt: syncedAt,
       })
@@ -195,40 +270,15 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
   };
 }
 
-export function generateMagicSyncUrl(config: FirebaseConfigData): string {
-  const payload = JSON.stringify(config);
-  const encoded = btoa(unescape(encodeURIComponent(payload)));
-  const baseUrl = `${window.location.origin}${window.location.pathname}`;
-  return `${baseUrl}#sync=${encoded}`;
-}
-
-export function extractMagicSyncFromHash(): FirebaseConfigData | null {
-  if (typeof window === 'undefined') return null;
-  const hash = window.location.hash || '';
-  const match = hash.match(/sync=([A-Za-z0-9+/=_-]+)/);
-  if (!match?.[1]) return null;
-  try {
-    const decoded = decodeURIComponent(escape(atob(match[1])));
-    const parsed = JSON.parse(decoded) as FirebaseConfigData;
-    if (parsed.apiKey && parsed.projectId && parsed.appId && parsed.syncSpaceId) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 export function parseFirebaseSnippet(input: string): Partial<FirebaseConfigData> | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  // Try JSON directly first
   try {
     const obj = JSON.parse(trimmed);
     if (obj && typeof obj === 'object') return obj;
   } catch {
-    // Parse JS object literal copied directly from Firebase Console
+    // Parse JS object literal copied from Firebase Console
   }
 
   const pick = (key: string): string | undefined => {

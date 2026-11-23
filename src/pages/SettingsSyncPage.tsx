@@ -6,7 +6,6 @@ import {
   Check,
   Download,
   Upload,
-  Link2,
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
@@ -14,64 +13,71 @@ import {
   ChevronDown,
   ChevronUp,
   Lock,
+  LogIn,
+  LogOut,
 } from 'lucide-react';
-import type { FirebaseConfigData, UserSettings } from '../types';
-import {
-  generateMagicSyncUrl,
-  parseFirebaseSnippet,
-  syncWithFirebase,
-} from '../lib/firebaseSync';
+import type { AuthUserInfo, FirebaseConfigData, UserSettings } from '../types';
+import { parseFirebaseSnippet, syncWithFirebase } from '../lib/firebaseSync';
 import { db, exportFullBackupJson, importFullBackupJson } from '../lib/db';
 
 interface SettingsSyncPageProps {
   settings: UserSettings;
+  authUser: AuthUserInfo | null;
+  authBusy: boolean;
+  onGoogleSignIn: () => Promise<void>;
+  onGoogleSignOut: () => Promise<void>;
   onSettingsChanged: (next: UserSettings) => Promise<void>;
   onSynced: () => Promise<void>;
 }
 
-const FIRESTORE_RULES_SNIPPET = `rules_version = '2';
+function buildOwnerFirestoreRules(email: string): string {
+  return `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /kotoba_spaces/{spaceId}/data/{docId} {
-      allow read, write: if spaceId == "THAY_BANG_MA_DONG_BO_CUA_BAN";
+    match /users/{userId}/kotoba_data/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == "${email}";
     }
   }
 }`;
+}
 
 export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
   settings,
+  authUser,
+  authBusy,
+  onGoogleSignIn,
+  onGoogleSignOut,
   onSettingsChanged,
   onSynced,
 }) => {
   const existing = settings.firebaseConfig;
-  const isConnected = Boolean(existing?.apiKey && existing?.projectId && existing?.syncSpaceId);
-
-  const [showAdvancedFirebase, setShowAdvancedFirebase] = useState(!isConnected);
+  const [showAdvancedFirebase, setShowAdvancedFirebase] = useState(false);
   const [apiKey, setApiKey] = useState(existing?.apiKey || '');
   const [authDomain, setAuthDomain] = useState(existing?.authDomain || '');
   const [projectId, setProjectId] = useState(existing?.projectId || '');
   const [appId, setAppId] = useState(existing?.appId || '');
-  const [syncSpaceId, setSyncSpaceId] = useState(existing?.syncSpaceId || '');
   const [snippetInput, setSnippetInput] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
-  const [copiedKey, setCopiedKey] = useState<'magic' | 'rules' | null>(null);
+  const [copiedRules, setCopiedRules] = useState(false);
 
   const currentConfig: FirebaseConfigData | null =
-    apiKey.trim() && projectId.trim() && appId.trim() && syncSpaceId.trim()
+    apiKey.trim() && projectId.trim() && appId.trim()
       ? {
           apiKey: apiKey.trim(),
           authDomain: authDomain.trim() || `${projectId.trim()}.firebaseapp.com`,
           projectId: projectId.trim(),
           appId: appId.trim(),
-          syncSpaceId: syncSpaceId.trim(),
         }
       : null;
 
-  const magicUrl = currentConfig ? generateMagicSyncUrl(currentConfig) : '';
+  const ownerEmail = authUser?.email || 'batrunghoang832@gmail.com';
+  const rulesText = buildOwnerFirestoreRules(ownerEmail);
 
   function handleParseSnippet() {
     const parsed = parseFirebaseSnippet(snippetInput);
@@ -86,17 +92,11 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
     if (parsed.authDomain) setAuthDomain(parsed.authDomain);
     if (parsed.projectId) setProjectId(parsed.projectId);
     if (parsed.appId) setAppId(parsed.appId);
-    setStatusMsg({
-      type: 'success',
-      text: 'Đã điền tự động thông tin Firebase! Hãy nhập Mã đồng bộ cá nhân rồi bấm "Lưu & Đồng bộ ngay".',
-    });
+    setStatusMsg({ type: 'success', text: 'Đã điền tự động cấu hình Firebase!' });
   }
 
   async function handleQuickSync() {
-    if (!currentConfig) {
-      setShowAdvancedFirebase(true);
-      return;
-    }
+    if (!currentConfig || !authUser) return;
     setBusy(true);
     setStatusMsg(null);
     try {
@@ -107,54 +107,35 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
         text: `Đã đồng bộ thành công (${res.decksCount} bộ thẻ · ${res.cardsCount} từ vựng · ${res.exercisesCount} bài nghe).`,
       });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi kết nối đồng bộ.';
       setStatusMsg({
         type: 'error',
-        text: err instanceof Error ? `Lỗi đồng bộ: ${err.message}` : 'Lỗi kết nối đồng bộ.',
+        text: msg.includes('Missing or insufficient permissions')
+          ? 'Firestore đang chặn quyền ghi — hãy mở "Cấu hình nâng cao" bên dưới, copy Firestore Rules mới (theo email Google của bạn) dán vào Firebase Console rồi bấm Publish.'
+          : `Lỗi đồng bộ: ${msg}`,
       });
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleSaveAndSync(e: React.FormEvent) {
+  async function handleSaveConfig(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentConfig) {
-      setStatusMsg({ type: 'error', text: 'Vui lòng điền đủ apiKey, projectId, appId và Mã đồng bộ.' });
-      return;
-    }
-
+    if (!currentConfig) return;
     setBusy(true);
-    setStatusMsg(null);
     try {
-      const updatedSettings: UserSettings = {
-        ...settings,
-        firebaseConfig: currentConfig,
-      };
-      await onSettingsChanged(updatedSettings);
-      const res = await syncWithFirebase(currentConfig);
-      await onSynced();
+      await onSettingsChanged({ ...settings, firebaseConfig: currentConfig });
       setShowAdvancedFirebase(false);
-      setStatusMsg({
-        type: 'success',
-        text: `Lưu & đồng bộ thành công! (${res.decksCount} bộ thẻ · ${res.cardsCount} từ vựng · ${res.exercisesCount} bài nghe).`,
-      });
-    } catch (err) {
-      setStatusMsg({
-        type: 'error',
-        text:
-          err instanceof Error
-            ? `Lỗi đồng bộ Firebase: ${err.message}. Hãy kiểm tra Firestore Database & Rules.`
-            : 'Lỗi kết nối Firebase.',
-      });
+      setStatusMsg({ type: 'success', text: 'Đã lưu cấu hình Firebase.' });
     } finally {
       setBusy(false);
     }
   }
 
-  async function copyText(text: string, which: 'magic' | 'rules') {
-    await navigator.clipboard.writeText(text);
-    setCopiedKey(which);
-    window.setTimeout(() => setCopiedKey(null), 2000);
+  async function copyRules() {
+    await navigator.clipboard.writeText(rulesText);
+    setCopiedRules(true);
+    window.setTimeout(() => setCopiedRules(false), 2000);
   }
 
   async function handleExportBackup() {
@@ -211,7 +192,7 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
         </div>
       )}
 
-      {/* Study & Backup Preferences (Primary visible section) */}
+      {/* Study & Backup Preferences */}
       <div className="grid gap-5 md:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
@@ -298,53 +279,80 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
         </div>
       </div>
 
-      {/* Compact Cloud Sync Status + Collapsible Hidden Config */}
+      {/* Google Account & Cloud Sync Card */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                isConnected
-                  ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                  : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400'
-              }`}
-            >
-              <Cloud className="h-5 w-5" />
-            </div>
+            {authUser?.photoURL ? (
+              <img
+                src={authUser.photoURL}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-11 w-11 rounded-2xl border border-slate-200 dark:border-slate-700"
+              />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                <Cloud className="h-5 w-5" />
+              </div>
+            )}
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Đồng bộ đám mây
+                {authUser
+                  ? `Tài khoản: ${authUser.displayName || authUser.email}`
+                  : 'Đồng bộ bằng tài khoản Google (Bảo mật riêng tư)'}
               </h2>
               <p className="text-xs text-slate-500">
-                {isConnected
-                  ? settings.lastSyncedAt
-                    ? `Đã kết nối · Đồng bộ gần nhất: ${new Date(settings.lastSyncedAt).toLocaleString('vi-VN')}`
-                    : 'Đã kết nối sẵn sàng đồng bộ'
-                  : 'Chưa cấu hình kết nối đám mây'}
+                {authUser
+                  ? `${authUser.email || ''}${
+                      settings.lastSyncedAt
+                        ? ` · Đồng bộ gần nhất: ${new Date(settings.lastSyncedAt).toLocaleString('vi-VN')}`
+                        : ''
+                    }`
+                  : 'Đăng nhập 1 lần duy nhất trên mỗi thiết bị, dữ liệu được khóa chặt theo đúng Gmail của bạn.'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {isConnected && (
+            {authUser ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleQuickSync()}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} />
+                  Đồng bộ ngay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void onGoogleSignOut()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => void handleQuickSync()}
-                disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                onClick={() => void onGoogleSignIn()}
+                disabled={authBusy}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} />
-                Đồng bộ ngay
+                <LogIn className="h-4 w-4" />
+                {authBusy ? 'Đang đăng nhập...' : 'Đăng nhập Google'}
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setShowAdvancedFirebase((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             >
               <Lock className="h-3.5 w-3.5" />
-              {showAdvancedFirebase ? 'Ẩn cấu hình nâng cao' : 'Cấu hình nâng cao'}
+              Nâng cao
               {showAdvancedFirebase ? (
                 <ChevronUp className="h-3.5 w-3.5" />
               ) : (
@@ -354,12 +362,32 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
           </div>
         </div>
 
-        {/* Hidden by default when connected */}
+        {/* Hidden Advanced Config & Owner-Locked Firestore Rules */}
         {showAdvancedFirebase && (
           <div className="mt-6 space-y-5 border-t border-slate-100 pt-5 dark:border-slate-800">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                  <ShieldCheck className="h-4 w-4" />
+                  Firestore Rules khóa riêng cho Gmail: {ownerEmail}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void copyRules()}
+                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700"
+                >
+                  {copiedRules ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedRules ? 'Đã copy' : 'Copy Rules'}
+                </button>
+              </div>
+              <pre className="overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] leading-relaxed text-emerald-300">
+                {rulesText}
+              </pre>
+            </div>
+
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">
-                Dán nhanh <code>firebaseConfig</code> (nếu muốn đổi project khác):
+                Đổi Firebase project khác (tùy chọn):
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <textarea
@@ -379,7 +407,7 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
               </div>
             </div>
 
-            <form onSubmit={handleSaveAndSync} className="space-y-4">
+            <form onSubmit={handleSaveConfig} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -428,78 +456,14 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Mã đồng bộ cá nhân (Sync Space ID) *
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={syncSpaceId}
-                  onChange={(e) => setSyncSpaceId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-
               <button
                 type="submit"
                 disabled={busy}
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} />
-                Lưu & Đồng bộ ngay
+                Lưu cấu hình Firebase
               </button>
             </form>
-
-            {magicUrl && (
-              <div className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4 dark:border-violet-900/50 dark:bg-violet-950/20">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-violet-900 dark:text-violet-200">
-                    <Link2 className="h-4 w-4" />
-                    Magic Bookmark Link (cho thiết bị mới)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void copyText(magicUrl, 'magic')}
-                    className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700"
-                  >
-                    {copiedKey === 'magic' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedKey === 'magic' ? 'Đã copy!' : 'Copy link'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  Mẫu Firestore Rules
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void copyText(
-                      FIRESTORE_RULES_SNIPPET.replace(
-                        'THAY_BANG_MA_DONG_BO_CUA_BAN',
-                        syncSpaceId.trim() || 'kotoba-secret-2026'
-                      ),
-                      'rules'
-                    )
-                  }
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  {copiedKey === 'rules' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copiedKey === 'rules' ? 'Đã copy' : 'Copy Rules'}
-                </button>
-              </div>
-              <pre className="overflow-x-auto rounded-xl bg-slate-900 p-3 text-[11px] leading-relaxed text-emerald-300">
-                {FIRESTORE_RULES_SNIPPET.replace(
-                  'THAY_BANG_MA_DONG_BO_CUA_BAN',
-                  '***'
-                )}
-              </pre>
-            </div>
           </div>
         )}
       </div>

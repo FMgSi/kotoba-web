@@ -4,12 +4,14 @@ import {
   BookOpen,
   Headphones,
   PenTool,
-  Cloud,
+  ShieldCheck,
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  LogIn,
 } from 'lucide-react';
 import type {
+  AuthUserInfo,
   DailyActivity,
   Language,
   ListeningExercise,
@@ -28,7 +30,9 @@ interface DashboardPageProps {
   progressList: ListeningProgress[];
   activities: DailyActivity[];
   settings: UserSettings;
+  authUser: AuthUserInfo | null;
   syncStatus: SyncStatus;
+  onGoogleSignIn: () => void;
   onNavigate: (tab: NavTab, lang?: Language) => void;
 }
 
@@ -61,7 +65,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   progressList,
   activities,
   settings,
+  authUser,
   syncStatus,
+  onGoogleSignIn,
   onNavigate,
 }) => {
   const activeCards = useMemo(() => cards.filter((c) => !c.deleted), [cards]);
@@ -124,20 +130,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* Firebase Sync Reminder Banner (if not yet connected) */}
-      {!settings.firebaseConfig?.projectId && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
-          <div className="flex items-center gap-3 text-sm text-amber-900 dark:text-amber-200">
-            <Cloud className="h-5 w-5 shrink-0 text-amber-600" />
+      {/* Google 1-Time Sign-In Banner (only shown if not signed in yet) */}
+      {!authUser && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 px-5 py-3.5 dark:border-indigo-900/60 dark:bg-indigo-950/30">
+          <div className="flex items-center gap-3 text-sm text-indigo-950 dark:text-indigo-200">
+            <ShieldCheck className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" />
             <span>
-              Dữ liệu hiện đang lưu cục bộ trên máy này. Kết nối <b>Firebase miễn phí</b> (3 phút) để tự đăng nhập & đồng bộ mượt giữa điện thoại, laptop và PC.
+              Đăng nhập <b>Google 1 lần duy nhất</b> trên thiết bị này để bảo vệ dữ liệu riêng tư và tự động đồng bộ giữa điện thoại, laptop & PC.
             </span>
           </div>
           <button
-            onClick={() => onNavigate('settings')}
-            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
+            onClick={onGoogleSignIn}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
           >
-            Thiết lập Firebase
+            <LogIn className="h-3.5 w-3.5" />
+            Đăng nhập Google
           </button>
         </div>
       )}

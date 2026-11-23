@@ -6,15 +6,16 @@ import {
   BookOpenCheck,
   PenLine,
   Settings,
-  Cloud,
   RefreshCw,
   Moon,
   Sun,
   CheckCircle2,
   AlertTriangle,
   Sparkles,
+  LogIn,
 } from 'lucide-react';
 import type {
+  AuthUserInfo,
   DailyActivity,
   Deck,
   JpStudyMode,
@@ -27,14 +28,24 @@ import type {
   VocabCard,
 } from './types';
 import { db, DEFAULT_SETTINGS, ensureSeededDatabase } from './lib/db';
-import { extractMagicSyncFromHash, syncWithFirebase } from './lib/firebaseSync';
+import {
+  signInWithGoogleAccount,
+  signOutGoogleAccount,
+  subscribeGoogleAuth,
+  syncWithFirebase,
+} from './lib/firebaseSync';
 import { DashboardPage } from './pages/DashboardPage';
 import { VocabPage } from './pages/VocabPage';
 import { ListeningPage } from './pages/ListeningPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { SettingsSyncPage } from './pages/SettingsSyncPage';
 
-const NAV_ITEMS: { id: NavTab; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const NAV_ITEMS: {
+  id: NavTab;
+  label: string;
+  shortLabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { id: 'dashboard', label: 'Tổng quan', shortLabel: 'Home', icon: LayoutDashboard },
   { id: 'vocab', label: 'Từ vựng (Anki)', shortLabel: 'Từ vựng', icon: Layers },
   { id: 'listening', label: 'Luyện Nghe', shortLabel: 'Nghe', icon: Headphones },
@@ -47,6 +58,9 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [authUser, setAuthUser] = useState<AuthUserInfo | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<VocabCard[]>([]);
   const [exercises, setExercises] = useState<ListeningExercise[]>([]);
@@ -56,6 +70,13 @@ export default function App() {
   const [syncToast, setSyncToast] = useState<string | null>(null);
 
   const autoSyncTimerRef = useRef<number | null>(null);
+  const settingsRef = useRef<UserSettings>(DEFAULT_SETTINGS);
+  settingsRef.current = settings;
+
+  const showToast = useCallback((text: string, ms = 3200) => {
+    setSyncToast(text);
+    window.setTimeout(() => setSyncToast(null), ms);
+  }, []);
 
   const reloadLocalData = useCallback(async () => {
     const [d, c, ex, prog, act, st] = await Promise.all([
@@ -76,12 +97,9 @@ export default function App() {
 
   const runCloudSync = useCallback(
     async (explicitSettings?: UserSettings, silent = false) => {
-      const cfg = (explicitSettings ?? settings).firebaseConfig;
-      if (!cfg?.apiKey || !cfg?.projectId || !cfg?.syncSpaceId) {
+      const cfg = (explicitSettings ?? settingsRef.current).firebaseConfig;
+      if (!cfg?.apiKey || !cfg?.projectId) {
         setSyncStatus('local');
-        if (!silent) {
-          setActiveTab('settings');
-        }
         return;
       }
 
@@ -91,63 +109,116 @@ export default function App() {
         await reloadLocalData();
         setSyncStatus('synced');
         if (!silent) {
-          setSyncToast('Đã đồng bộ toàn bộ tiến độ với Firebase!');
-          window.setTimeout(() => setSyncToast(null), 2600);
+          showToast('Đã đồng bộ toàn bộ tiến độ với tài khoản Google!');
         }
       } catch (err) {
         console.error('Sync failed:', err);
         setSyncStatus('error');
         if (!silent) {
-          setSyncToast('Chưa đồng bộ được — kiểm tra cấu hình Firebase trong mục Sync.');
-          window.setTimeout(() => setSyncToast(null), 3500);
+          const msg = err instanceof Error ? err.message : 'Chưa đồng bộ được.';
+          showToast(
+            msg.includes('Missing or insufficient permissions')
+              ? 'Chưa có quyền ghi Firestore — kiểm tra tab Cài đặt để dán Firestore Rules theo email Google của bạn.'
+              : msg,
+            5000
+          );
         }
       }
     },
-    [settings, reloadLocalData]
+    [reloadLocalData, showToast]
   );
 
-  // Initial startup: seed DB, check Magic Auto-Login Bookmark Link (#sync=...), auto-sync Firebase!
+  // 1. Seed local IndexedDB on startup
   useEffect(() => {
     let active = true;
     (async () => {
-      let seeded = await ensureSeededDatabase();
-
-      const magicConfig = extractMagicSyncFromHash();
-      if (magicConfig) {
-        seeded = { ...seeded, firebaseConfig: magicConfig, autoSync: true };
-        await db.settings.put(seeded);
-        // Clean hash from URL bar after storing locally
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-
+      const seeded = await ensureSeededDatabase();
       await reloadLocalData();
       if (!active) return;
       setSettings(seeded);
       setReady(true);
-
-      if (seeded.firebaseConfig?.projectId) {
-        void runCloudSync(seeded, !magicConfig);
-      }
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadLocalData]);
+
+  // 2. Subscribe to Firebase Google Auth — auto-restores login on phone/PC/laptop and auto-syncs!
+  useEffect(() => {
+    const cfg = settings.firebaseConfig;
+    if (!ready || !cfg?.apiKey || !cfg?.projectId) return;
+
+    let unsubscribe: (() => void) | null = null;
+    let active = true;
+
+    subscribeGoogleAuth(cfg, (user) => {
+      if (!active) return;
+      setAuthUser(user);
+      if (user) {
+        void runCloudSync(settingsRef.current, true);
+      } else {
+        setSyncStatus('local');
+      }
+    })
+      .then((unsub) => {
+        if (active) unsubscribe = unsub;
+        else unsub();
+      })
+      .catch((err) => {
+        console.warn('Auth init warning:', err);
+      });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [ready, settings.firebaseConfig?.projectId, settings.firebaseConfig?.apiKey, runCloudSync]);
 
   // Apply Dark Mode class
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.darkMode);
   }, [settings.darkMode]);
 
+  const handleGoogleSignIn = useCallback(async () => {
+    const cfg = settingsRef.current.firebaseConfig;
+    if (!cfg?.apiKey || !cfg?.projectId) {
+      setActiveTab('settings');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const user = await signInWithGoogleAccount(cfg);
+      if (user) {
+        setAuthUser(user);
+        showToast(`Xin chào ${user.displayName || user.email}! Đang đồng bộ...`);
+        await runCloudSync(settingsRef.current, false);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Đăng nhập Google thất bại.';
+      showToast(msg, 5500);
+    } finally {
+      setAuthBusy(false);
+    }
+  }, [runCloudSync, showToast]);
+
+  const handleGoogleSignOut = useCallback(async () => {
+    const cfg = settingsRef.current.firebaseConfig;
+    if (!cfg) return;
+    await signOutGoogleAccount(cfg);
+    setAuthUser(null);
+    setSyncStatus('local');
+    showToast('Đã đăng xuất tài khoản Google.');
+  }, [showToast]);
+
   const handleDataChanged = useCallback(async () => {
     await reloadLocalData();
-    if (settings.autoSync && settings.firebaseConfig?.projectId) {
+    if (settingsRef.current.autoSync && authUser && settingsRef.current.firebaseConfig?.projectId) {
       if (autoSyncTimerRef.current) window.clearTimeout(autoSyncTimerRef.current);
       autoSyncTimerRef.current = window.setTimeout(() => {
-        void runCloudSync(settings, true);
-      }, 1500);
+        void runCloudSync(settingsRef.current, true);
+      }, 1400);
     }
-  }, [reloadLocalData, settings, runCloudSync]);
+  }, [reloadLocalData, authUser, runCloudSync]);
 
   async function updateSettings(patch: Partial<UserSettings>) {
     const next: UserSettings = { ...settings, ...patch };
@@ -220,7 +291,7 @@ export default function App() {
             })}
           </nav>
 
-          {/* Right Controls: Language Switcher + 1-Click Sync + Dark Mode */}
+          {/* Right Controls: Language Switcher + Google Auth / 1-Click Sync + Dark Mode */}
           <div className="flex items-center gap-2">
             {/* EN / JP Switcher */}
             <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-700 dark:bg-slate-800">
@@ -246,40 +317,50 @@ export default function App() {
               </button>
             </div>
 
-            {/* 1-Click Sync Button */}
-            <button
-              onClick={() => void runCloudSync(settings, false)}
-              disabled={syncStatus === 'syncing'}
-              title={
-                settings.firebaseConfig?.projectId
-                  ? 'Bấm để đồng bộ ngay với Firebase'
-                  : 'Chưa nối Firebase — bấm để thiết lập'
-              }
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition ${
-                syncStatus === 'synced'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
-                  : syncStatus === 'error'
-                  ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-              }`}
-            >
-              {syncStatus === 'syncing' ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin text-indigo-500" />
-              ) : syncStatus === 'synced' ? (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              ) : syncStatus === 'error' ? (
-                <AlertTriangle className="h-3.5 w-3.5" />
-              ) : (
-                <Cloud className="h-3.5 w-3.5 text-indigo-500" />
-              )}
-              <span className="hidden sm:inline">
-                {syncStatus === 'syncing'
-                  ? 'Đang đồng bộ'
-                  : syncStatus === 'synced'
-                  ? 'Đồng bộ'
-                  : 'Sync'}
-              </span>
-            </button>
+            {/* Google Sign-In OR 1-Click Sync Button */}
+            {authUser ? (
+              <button
+                onClick={() => void runCloudSync(settings, false)}
+                disabled={syncStatus === 'syncing'}
+                title={`Đã đăng nhập: ${authUser.email || ''} — bấm để đồng bộ ngay`}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition ${
+                  syncStatus === 'synced'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
+                    : syncStatus === 'error'
+                    ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                }`}
+              >
+                {syncStatus === 'syncing' ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+                ) : syncStatus === 'synced' ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+                {authUser.photoURL && (
+                  <img
+                    src={authUser.photoURL}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="h-4 w-4 rounded-full"
+                  />
+                )}
+                <span className="hidden sm:inline">
+                  {syncStatus === 'syncing' ? 'Đang đồng bộ' : 'Đồng bộ'}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => void handleGoogleSignIn()}
+                disabled={authBusy}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Đăng nhập Google</span>
+                <span className="sm:hidden">Google</span>
+              </button>
+            )}
 
             {/* Dark Mode Toggle */}
             <button
@@ -295,7 +376,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {syncToast && (
-        <div className="fixed right-4 bottom-20 z-50 rounded-2xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl md:bottom-6 dark:bg-indigo-600">
+        <div className="fixed right-4 bottom-20 z-50 max-w-sm rounded-2xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl md:bottom-6 dark:bg-indigo-600">
           {syncToast}
         </div>
       )}
@@ -309,7 +390,9 @@ export default function App() {
             progressList={progressList}
             activities={activities}
             settings={settings}
+            authUser={authUser}
             syncStatus={syncStatus}
+            onGoogleSignIn={() => void handleGoogleSignIn()}
             onNavigate={handleNavigate}
           />
         )}
@@ -343,6 +426,10 @@ export default function App() {
         {activeTab === 'settings' && (
           <SettingsSyncPage
             settings={settings}
+            authUser={authUser}
+            authBusy={authBusy}
+            onGoogleSignIn={handleGoogleSignIn}
+            onGoogleSignOut={handleGoogleSignOut}
             onSettingsChanged={async (next) => {
               setSettings(next);
               await db.settings.put(next);
@@ -355,7 +442,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer Credit (KanjiCanvas MIT attribution) */}
+      {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
         KotobaLab Personal Study App · Japanese handwriting engine powered by{' '}
         <a

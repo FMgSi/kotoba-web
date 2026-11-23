@@ -42,7 +42,6 @@ export function getEnvFirebaseConfig(): FirebaseConfigData | undefined {
     import.meta.env.VITE_FIREBASE_APP_ID?.trim() || '1:514958229615:web:8976ff2a1da2af49accd9a';
   const authDomain =
     import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim() || 'kotoba-lab-1bf96.firebaseapp.com';
-  const syncSpaceId = import.meta.env.VITE_SYNC_SPACE_ID?.trim() || 'kotoba-secret-2026';
 
   if (!apiKey || !projectId || !appId) return undefined;
   return {
@@ -55,7 +54,6 @@ export function getEnvFirebaseConfig(): FirebaseConfigData | undefined {
     messagingSenderId:
       import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID?.trim() || '514958229615',
     appId,
-    syncSpaceId,
   };
 }
 
