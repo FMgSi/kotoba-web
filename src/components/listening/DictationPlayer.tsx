@@ -631,7 +631,7 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
                   ? 'Type what you hear... (Nhấn Ctrl để nghe lại, Enter để kiểm tra)'
                   : 'Gõ những gì bạn nghe được (vd: ohayou → おはよう)...'
               }
-              className="font-jp w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4 text-lg font-medium text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="font-jp w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-4 text-lg font-medium text-slate-900 placeholder:text-slate-400 transition focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 dark:focus:bg-slate-800"
             />
 
             {/* Optional Japanese Handwriting Pad right inside Dictation! */}
@@ -676,7 +676,7 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
 
                   <button
                     onClick={handleSkipReveal}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     <SkipForward className="h-4 w-4" />
                     Skip / Đáp án
@@ -686,7 +686,7 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
 
               <button
                 onClick={playCurrentSegment}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Nghe lại (Ctrl)
@@ -841,17 +841,17 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">Từ vựng</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Từ vựng</label>
               <input
                 required
                 value={saveWordDraft.word}
                 onChange={(e) => setSaveWordDraft({ ...saveWordDraft, word: e.target.value })}
-                className="font-jp w-full rounded-xl border border-slate-300 px-3 py-2 text-base font-bold dark:border-slate-700 dark:bg-slate-800"
+                className="font-jp w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">
+              <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Nghĩa tiếng Việt *
               </label>
               <input
@@ -860,7 +860,7 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
                 value={saveWordDraft.meaning}
                 onChange={(e) => setSaveWordDraft({ ...saveWordDraft, meaning: e.target.value })}
                 placeholder="Nhập nghĩa của từ này..."
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
             </div>
 

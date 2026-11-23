@@ -15,7 +15,7 @@ interface JapaneseHandwritingPadProps {
 
 const QUICK_KANA = ['っ', 'ゃ', 'ゅ', 'ょ', 'ー', 'ッ'];
 
-const STROKE_COLORS = [
+const STROKE_COLORS_LIGHT = [
   '#4f46e5',
   '#0284c7',
   '#0d9488',
@@ -24,6 +24,17 @@ const STROKE_COLORS = [
   '#7c3aed',
   '#059669',
   '#2563eb',
+];
+
+const STROKE_COLORS_DARK = [
+  '#818cf8',
+  '#38bdf8',
+  '#2dd4bf',
+  '#fbbf24',
+  '#fb7185',
+  '#a78bfa',
+  '#34d399',
+  '#60a5fa',
 ];
 
 export const JapaneseHandwritingPad: React.FC<JapaneseHandwritingPadProps> = ({
@@ -84,9 +95,13 @@ export const JapaneseHandwritingPad: React.FC<JapaneseHandwritingPadProps> = ({
     ctx.lineJoin = 'round';
     ctx.lineWidth = 5.5;
 
+    const isDark = document.documentElement.classList.contains('dark');
+    const palette = isDark ? STROKE_COLORS_DARK : STROKE_COLORS_LIGHT;
+
     allStrokes.forEach((stroke, idx) => {
-      ctx.strokeStyle = STROKE_COLORS[idx % STROKE_COLORS.length];
-      ctx.fillStyle = STROKE_COLORS[idx % STROKE_COLORS.length];
+      const strokeColor = palette[idx % palette.length];
+      ctx.strokeStyle = strokeColor;
+      ctx.fillStyle = strokeColor;
 
       if (stroke.length === 1) {
         ctx.beginPath();

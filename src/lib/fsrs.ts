@@ -11,21 +11,26 @@ const scheduler = fsrs(
 
 export type ReviewRating = 1 | 2 | 3 | 4; // Again, Hard, Good, Easy
 
+function safeDate(ms: unknown, fallback = Date.now()): Date {
+  const n = typeof ms === 'number' && Number.isFinite(ms) && ms > 0 ? ms : fallback;
+  return new Date(n);
+}
+
 function toFsrsCard(vc: VocabCard): Card {
-  if (vc.reps === 0 && vc.state === 0) {
-    return createEmptyCard(new Date(vc.due || Date.now()));
+  if (!vc.reps || vc.state === 0) {
+    return createEmptyCard(safeDate(vc.due));
   }
   return {
-    due: new Date(vc.due),
-    stability: vc.stability,
-    difficulty: vc.difficulty,
-    elapsed_days: vc.elapsedDays,
-    scheduled_days: vc.scheduledDays,
+    due: safeDate(vc.due),
+    stability: Number.isFinite(vc.stability) ? vc.stability : 0,
+    difficulty: Number.isFinite(vc.difficulty) ? vc.difficulty : 0,
+    elapsed_days: Number.isFinite(vc.elapsedDays) ? vc.elapsedDays : 0,
+    scheduled_days: Number.isFinite(vc.scheduledDays) ? vc.scheduledDays : 0,
     learning_steps: 0,
-    reps: vc.reps,
-    lapses: vc.lapses,
-    state: vc.state,
-    last_review: vc.lastReview ? new Date(vc.lastReview) : undefined,
+    reps: Number.isFinite(vc.reps) ? vc.reps : 0,
+    lapses: Number.isFinite(vc.lapses) ? vc.lapses : 0,
+    state: ([0, 1, 2, 3].includes(vc.state) ? vc.state : 0) as 0 | 1 | 2 | 3,
+    last_review: vc.lastReview ? safeDate(vc.lastReview) : undefined,
   };
 }
 
