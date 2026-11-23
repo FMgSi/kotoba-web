@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Headphones,
   Plus,
@@ -58,6 +58,11 @@ export const ListeningPage: React.FC<ListeningPageProps> = ({
     () => langExercises.find((e) => e.id === activeExerciseId),
     [langExercises, activeExerciseId]
   );
+
+  useEffect(() => {
+    setActiveExerciseId(null);
+    setSelectedCategory('ALL');
+  }, [language]);
 
   async function handleDelete(ex: ListeningExercise) {
     if (!window.confirm(`Xóa bài nghe "${ex.title}"?`)) return;

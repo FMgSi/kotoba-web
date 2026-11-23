@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   Play,
@@ -74,6 +74,27 @@ export const VocabPage: React.FC<VocabPageProps> = ({
     return getDueQueue(deckCards);
   }, [studyingDeckId, langCards, practiceAllMode]);
 
+  const filteredBrowseCards = useMemo(() => {
+    const base = browsingDeckId
+      ? langCards.filter((c) => c.deckId === browsingDeckId)
+      : langCards;
+    if (!searchQuery.trim()) return base;
+    const q = searchQuery.toLowerCase();
+    return base.filter(
+      (c) =>
+        c.front.toLowerCase().includes(q) ||
+        c.back.toLowerCase().includes(q) ||
+        (c.reading && c.reading.toLowerCase().includes(q)) ||
+        (c.romaji && c.romaji.toLowerCase().includes(q))
+    );
+  }, [browsingDeckId, langCards, searchQuery]);
+
+  useEffect(() => {
+    setStudyingDeckId(null);
+    setBrowsingDeckId(null);
+    setPracticeAllMode(false);
+  }, [language]);
+
   async function handleRateCard(
     card: VocabCard,
     rating: ReviewRating,
@@ -144,21 +165,6 @@ export const VocabPage: React.FC<VocabPageProps> = ({
 
   const totalDue = getDueQueue(langCards).length;
   const totalMastered = langCards.filter(isCardMastered).length;
-
-  const filteredBrowseCards = useMemo(() => {
-    const base = browsingDeckId
-      ? langCards.filter((c) => c.deckId === browsingDeckId)
-      : langCards;
-    if (!searchQuery.trim()) return base;
-    const q = searchQuery.toLowerCase();
-    return base.filter(
-      (c) =>
-        c.front.toLowerCase().includes(q) ||
-        c.back.toLowerCase().includes(q) ||
-        (c.reading && c.reading.toLowerCase().includes(q)) ||
-        (c.romaji && c.romaji.toLowerCase().includes(q))
-    );
-  }, [browsingDeckId, langCards, searchQuery]);
 
   return (
     <div className="space-y-6">
