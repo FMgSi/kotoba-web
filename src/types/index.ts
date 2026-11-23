@@ -1,6 +1,6 @@
 export type Language = 'en' | 'jp';
 
-export type NavTab = 'dashboard' | 'vocab' | 'listening' | 'reading' | 'writing' | 'settings';
+export type NavTab = 'dashboard' | 'study' | 'vocab' | 'listening' | 'reading' | 'writing' | 'settings';
 
 export type JpStudyMode = 'handwriting' | 'typing' | 'flip';
 
@@ -122,3 +122,76 @@ export interface UserSettings {
 }
 
 export type SyncStatus = 'local' | 'syncing' | 'synced' | 'error';
+
+export type StudyExerciseType = 'mcq' | 'fill' | 'order';
+
+export interface StudyExercise {
+  id: string;
+  type: StudyExerciseType;
+  prompt: string;
+  context?: string;
+  audioText?: string;
+  options?: string[];
+  correctAnswer: string;
+  acceptedAnswers?: string[];
+  tokens?: string[];
+  explanation: string;
+}
+
+export interface StudyResourceLink {
+  label: string;
+  url: string;
+  source: string;
+}
+
+export interface StudyVocabSeed {
+  front: string;
+  reading?: string;
+  romaji?: string;
+  back: string;
+  example?: string;
+  exampleVi?: string;
+}
+
+export interface StudyStage {
+  id: string;
+  language: Language;
+  order: number;
+  badge: string;
+  title: string;
+  goal: string;
+  estimatedTime: string;
+  recommendedBooks: string[];
+  youtubeChannel: StudyResourceLink;
+}
+
+export interface StudyLesson {
+  id: string;
+  language: Language;
+  stageId: string;
+  order: number;
+  title: string;
+  subtitle: string;
+  targetBandOrLevel: string;
+  durationLabel: string;
+  booksAndMaterials: string[];
+  resources: StudyResourceLink[];
+  summaryPoints: {
+    heading: string;
+    body: string;
+    examples?: { text: string; meaning: string }[];
+  }[];
+  checklist: string[];
+  vocabPack: StudyVocabSeed[];
+  exercises: StudyExercise[];
+}
+
+export interface StudyLessonProgress {
+  lessonId: string;
+  completed: boolean;
+  bestScore: number;
+  attempts: number;
+  checkedTasks: number[];
+  completedAt?: number;
+  updatedAt: number;
+}

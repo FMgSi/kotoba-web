@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   Flame,
+  GraduationCap,
   BookOpen,
   Headphones,
   PenTool,
@@ -17,10 +18,13 @@ import type {
   ListeningExercise,
   ListeningProgress,
   NavTab,
+  StudyLessonProgress,
   SyncStatus,
   UserSettings,
   VocabCard,
 } from '../types';
+import { EN_STUDY_LESSONS } from '../data/studyCourseEn';
+import { JP_STUDY_LESSONS } from '../data/studyCourseJp';
 import { getDueQueue, isCardMastered } from '../lib/fsrs';
 import { getTodayKey } from '../lib/db';
 
@@ -28,6 +32,7 @@ interface DashboardPageProps {
   cards: VocabCard[];
   exercises: ListeningExercise[];
   progressList: ListeningProgress[];
+  studyProgressList: StudyLessonProgress[];
   activities: DailyActivity[];
   settings: UserSettings;
   authUser: AuthUserInfo | null;
@@ -63,6 +68,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   cards,
   exercises,
   progressList,
+  studyProgressList,
   activities,
   settings,
   authUser,
@@ -70,6 +76,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onGoogleSignIn,
   onNavigate,
 }) => {
+  const enStudyDone = useMemo(
+    () =>
+      EN_STUDY_LESSONS.filter((l) =>
+        studyProgressList.some((p) => p.lessonId === l.id && p.completed)
+      ).length,
+    [studyProgressList]
+  );
+  const jpStudyDone = useMemo(
+    () =>
+      JP_STUDY_LESSONS.filter((l) =>
+        studyProgressList.some((p) => p.lessonId === l.id && p.completed)
+      ).length,
+    [studyProgressList]
+  );
   const activeCards = useMemo(() => cards.filter((c) => !c.deleted), [cards]);
   const enCards = useMemo(() => activeCards.filter((c) => c.language === 'en'), [activeCards]);
   const jpCards = useMemo(() => activeCards.filter((c) => c.language === 'jp'), [activeCards]);
@@ -204,28 +224,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Luyện nghe chép chính tả từ Short Stories, IELTS Part 1, YouTube và ôn thẻ chuẩn Anki.
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <button
+              onClick={() => onNavigate('study', 'en')}
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-sky-400 hover:bg-sky-50/50 dark:border-slate-800 dark:bg-slate-950"
+            >
+              <GraduationCap className="h-5 w-5 text-sky-600" />
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
+                Study 3→6
+              </span>
+              <span className="text-[11px] font-semibold text-sky-600">
+                {enStudyDone}/{EN_STUDY_LESSONS.length} bài
+              </span>
+            </button>
+
             <button
               onClick={() => onNavigate('vocab', 'en')}
-              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-800 dark:bg-slate-950"
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-800 dark:bg-slate-950"
             >
               <BookOpen className="h-5 w-5 text-indigo-600" />
-              <span className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-                Ôn từ Anki
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
+                Ôn Anki
               </span>
-              <span className="text-xs font-semibold text-indigo-600">{enDue} thẻ đến hạn</span>
+              <span className="text-[11px] font-semibold text-indigo-600">{enDue} đến hạn</span>
             </button>
 
             <button
               onClick={() => onNavigate('listening', 'en')}
-              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-slate-800 dark:bg-slate-950"
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-slate-800 dark:bg-slate-950"
             >
               <Headphones className="h-5 w-5 text-emerald-600" />
-              <span className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
                 Luyện Nghe
               </span>
-              <span className="text-xs font-semibold text-emerald-600">
-                {exercises.filter((e) => e.language === 'en' && !e.deleted).length} bài nghe
+              <span className="text-[11px] font-semibold text-emerald-600">
+                {exercises.filter((e) => e.language === 'en' && !e.deleted).length} bài
               </span>
             </button>
           </div>
@@ -248,28 +281,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Dùng tay viết trực tiếp Hiragana/Katakana/Kanji để máy chấm đúng sai, kết hợp nghe chép Minna no Nihongo.
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <button
+              onClick={() => onNavigate('study', 'jp')}
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-pink-400 hover:bg-pink-50/50 dark:border-slate-800 dark:bg-slate-950"
+            >
+              <GraduationCap className="h-5 w-5 text-pink-600" />
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
+                Study 0→N3
+              </span>
+              <span className="text-[11px] font-semibold text-pink-600">
+                {jpStudyDone}/{JP_STUDY_LESSONS.length} bài
+              </span>
+            </button>
+
             <button
               onClick={() => onNavigate('vocab', 'jp')}
-              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-rose-400 hover:bg-rose-50/50 dark:border-slate-800 dark:bg-slate-950"
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-rose-400 hover:bg-rose-50/50 dark:border-slate-800 dark:bg-slate-950"
             >
               <PenTool className="h-5 w-5 text-rose-600" />
-              <span className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-                Viết tay ôn từ
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
+                Viết tay
               </span>
-              <span className="text-xs font-semibold text-rose-600">{jpDue} thẻ đến hạn</span>
+              <span className="text-[11px] font-semibold text-rose-600">{jpDue} đến hạn</span>
             </button>
 
             <button
               onClick={() => onNavigate('listening', 'jp')}
-              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-slate-800 dark:bg-slate-950"
+              className="flex flex-col items-start rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-slate-800 dark:bg-slate-950"
             >
               <Headphones className="h-5 w-5 text-emerald-600" />
-              <span className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
-                Nghe Minna N5
+              <span className="mt-2 text-xs font-bold text-slate-900 sm:text-sm dark:text-white">
+                Nghe N5
               </span>
-              <span className="text-xs font-semibold text-emerald-600">
-                {exercises.filter((e) => e.language === 'jp' && !e.deleted).length} bài nghe
+              <span className="text-[11px] font-semibold text-emerald-600">
+                {exercises.filter((e) => e.language === 'jp' && !e.deleted).length} bài
               </span>
             </button>
           </div>

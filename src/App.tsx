@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
+  GraduationCap,
   Layers,
   Headphones,
   BookOpenCheck,
@@ -23,6 +24,7 @@ import type {
   ListeningExercise,
   ListeningProgress,
   NavTab,
+  StudyLessonProgress,
   SyncStatus,
   UserSettings,
   VocabCard,
@@ -35,6 +37,7 @@ import {
   syncWithFirebase,
 } from './lib/firebaseSync';
 import { DashboardPage } from './pages/DashboardPage';
+import { StudyPage } from './pages/StudyPage';
 import { VocabPage } from './pages/VocabPage';
 import { ListeningPage } from './pages/ListeningPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -47,6 +50,7 @@ const NAV_ITEMS: {
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { id: 'dashboard', label: 'Tổng quan', shortLabel: 'Home', icon: LayoutDashboard },
+  { id: 'study', label: 'Study', shortLabel: 'Study', icon: GraduationCap },
   { id: 'vocab', label: 'Từ vựng (Anki)', shortLabel: 'Từ vựng', icon: Layers },
   { id: 'listening', label: 'Luyện Nghe', shortLabel: 'Nghe', icon: Headphones },
   { id: 'reading', label: 'Đọc', shortLabel: 'Đọc', icon: BookOpenCheck },
@@ -65,6 +69,7 @@ export default function App() {
   const [cards, setCards] = useState<VocabCard[]>([]);
   const [exercises, setExercises] = useState<ListeningExercise[]>([]);
   const [progressList, setProgressList] = useState<ListeningProgress[]>([]);
+  const [studyProgressList, setStudyProgressList] = useState<StudyLessonProgress[]>([]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('local');
   const [syncToast, setSyncToast] = useState<string | null>(null);
@@ -79,11 +84,12 @@ export default function App() {
   }, []);
 
   const reloadLocalData = useCallback(async () => {
-    const [d, c, ex, prog, act, st] = await Promise.all([
+    const [d, c, ex, prog, studyProg, act, st] = await Promise.all([
       db.decks.toArray(),
       db.cards.toArray(),
       db.exercises.toArray(),
       db.listeningProgress.toArray(),
+      db.studyProgress.toArray(),
       db.dailyActivity.toArray(),
       db.settings.get('singleton'),
     ]);
@@ -91,6 +97,7 @@ export default function App() {
     setCards(c);
     setExercises(ex);
     setProgressList(prog);
+    setStudyProgressList(studyProg);
     setActivities(act);
     if (st) setSettings(st);
   }, []);
@@ -388,12 +395,24 @@ export default function App() {
             cards={cards}
             exercises={exercises}
             progressList={progressList}
+            studyProgressList={studyProgressList}
             activities={activities}
             settings={settings}
             authUser={authUser}
             syncStatus={syncStatus}
             onGoogleSignIn={() => void handleGoogleSignIn()}
             onNavigate={handleNavigate}
+          />
+        )}
+
+        {activeTab === 'study' && (
+          <StudyPage
+            language={activeLang}
+            studyProgressList={studyProgressList}
+            decks={decks}
+            cards={cards}
+            ttsRate={activeTtsRate}
+            onDataChanged={handleDataChanged}
           />
         )}
 
@@ -444,7 +463,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.5 · Japanese handwriting engine powered by{' '}
+        KotobaLab v1.6 · Japanese handwriting engine powered by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"
@@ -459,7 +478,7 @@ export default function App() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-1.5 backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/95">
         <div className="grid grid-cols-5 gap-1">
-          {NAV_ITEMS.filter((i) => i.id !== 'writing').map((item) => {
+          {NAV_ITEMS.filter((i) => i.id !== 'reading' && i.id !== 'writing').map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
             return (

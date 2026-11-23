@@ -5,6 +5,7 @@ import type {
   FirebaseConfigData,
   ListeningExercise,
   ListeningProgress,
+  StudyLessonProgress,
   UserSettings,
   VocabCard,
 } from '../types';
@@ -24,6 +25,7 @@ export class KotobaDatabase extends Dexie {
   cards!: Table<VocabCard, string>;
   exercises!: Table<ListeningExercise, string>;
   listeningProgress!: Table<ListeningProgress, string>;
+  studyProgress!: Table<StudyLessonProgress, string>;
   dailyActivity!: Table<DailyActivity, string>;
   settings!: Table<UserSettings, string>;
 
@@ -34,6 +36,15 @@ export class KotobaDatabase extends Dexie {
       cards: 'id, deckId, language, due, state, updatedAt',
       exercises: 'id, language, category, updatedAt',
       listeningProgress: 'exerciseId, updatedAt',
+      dailyActivity: 'date, updatedAt',
+      settings: 'id',
+    });
+    this.version(2).stores({
+      decks: 'id, language, updatedAt',
+      cards: 'id, deckId, language, due, state, updatedAt',
+      exercises: 'id, language, category, updatedAt',
+      listeningProgress: 'exerciseId, updatedAt',
+      studyProgress: 'lessonId, updatedAt',
       dailyActivity: 'date, updatedAt',
       settings: 'id',
     });
@@ -171,22 +182,24 @@ export async function recordActivity(
 }
 
 export async function exportFullBackupJson(): Promise<string> {
-  const [decks, cards, exercises, listeningProgress, dailyActivity] = await Promise.all([
+  const [decks, cards, exercises, listeningProgress, studyProgress, dailyActivity] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
     db.exercises.toArray(),
     db.listeningProgress.toArray(),
+    db.studyProgress.toArray(),
     db.dailyActivity.toArray(),
   ]);
 
   return JSON.stringify(
     {
-      version: 1,
+      version: 2,
       exportedAt: Date.now(),
       decks,
       cards,
       exercises,
       listeningProgress,
+      studyProgress,
       dailyActivity,
     },
     null,
@@ -202,16 +215,20 @@ export async function importFullBackupJson(raw: string): Promise<{ decks: number
   const listeningProgress: ListeningProgress[] = Array.isArray(data.listeningProgress)
     ? data.listeningProgress
     : [];
+  const studyProgress: StudyLessonProgress[] = Array.isArray(data.studyProgress)
+    ? data.studyProgress
+    : [];
   const dailyActivity: DailyActivity[] = Array.isArray(data.dailyActivity) ? data.dailyActivity : [];
 
   await db.transaction(
     'rw',
-    [db.decks, db.cards, db.exercises, db.listeningProgress, db.dailyActivity],
+    [db.decks, db.cards, db.exercises, db.listeningProgress, db.studyProgress, db.dailyActivity],
     async () => {
       if (decks.length) await db.decks.bulkPut(decks);
       if (cards.length) await db.cards.bulkPut(cards);
       if (exercises.length) await db.exercises.bulkPut(exercises);
       if (listeningProgress.length) await db.listeningProgress.bulkPut(listeningProgress);
+      if (studyProgress.length) await db.studyProgress.bulkPut(studyProgress);
       if (dailyActivity.length) await db.dailyActivity.bulkPut(dailyActivity);
     }
   );

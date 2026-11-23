@@ -20,6 +20,7 @@ import type {
   FirebaseConfigData,
   ListeningExercise,
   ListeningProgress,
+  StudyLessonProgress,
   VocabCard,
 } from '../types';
 import { db } from './db';
@@ -187,15 +188,18 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
   const decksRef = doc(firestore, 'users', uid, 'kotoba_data', 'decks');
   const exercisesRef = doc(firestore, 'users', uid, 'kotoba_data', 'exercises');
   const progressRef = doc(firestore, 'users', uid, 'kotoba_data', 'progress');
+  const studyProgressRef = doc(firestore, 'users', uid, 'kotoba_data', 'studyProgress');
   const activityRef = doc(firestore, 'users', uid, 'kotoba_data', 'activity');
 
-  const [metaSnap, decksSnap, exercisesSnap, progressSnap, activitySnap] = await Promise.all([
-    getDoc(metaRef),
-    getDoc(decksRef),
-    getDoc(exercisesRef),
-    getDoc(progressRef),
-    getDoc(activityRef),
-  ]);
+  const [metaSnap, decksSnap, exercisesSnap, progressSnap, studyProgressSnap, activitySnap] =
+    await Promise.all([
+      getDoc(metaRef),
+      getDoc(decksRef),
+      getDoc(exercisesRef),
+      getDoc(progressRef),
+      getDoc(studyProgressRef),
+      getDoc(activityRef),
+    ]);
 
   const remoteCardChunksCount = (metaSnap.data()?.cardChunks as number) || 1;
   const remoteCards: VocabCard[] = [];
@@ -212,32 +216,49 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
   const remoteDecks = (decksSnap.data()?.items as Deck[]) || [];
   const remoteExercises = (exercisesSnap.data()?.items as ListeningExercise[]) || [];
   const remoteProgress = (progressSnap.data()?.items as ListeningProgress[]) || [];
+  const remoteStudyProgress = (studyProgressSnap.data()?.items as StudyLessonProgress[]) || [];
   const remoteActivity = (activitySnap.data()?.items as DailyActivity[]) || [];
 
-  const [localDecks, localCards, localExercises, localProgress, localActivity] = await Promise.all([
-    db.decks.toArray(),
-    db.cards.toArray(),
-    db.exercises.toArray(),
-    db.listeningProgress.toArray(),
-    db.dailyActivity.toArray(),
-  ]);
+  const [localDecks, localCards, localExercises, localProgress, localStudyProgress, localActivity] =
+    await Promise.all([
+      db.decks.toArray(),
+      db.cards.toArray(),
+      db.exercises.toArray(),
+      db.listeningProgress.toArray(),
+      db.studyProgress.toArray(),
+      db.dailyActivity.toArray(),
+    ]);
 
   const mergedDecks = mergeByUpdatedAt(localDecks, remoteDecks, (d) => d.id);
   const mergedCards = mergeByUpdatedAt(localCards, remoteCards, (c) => c.id);
   const mergedExercises = mergeByUpdatedAt(localExercises, remoteExercises, (e) => e.id);
   const mergedProgress = mergeByUpdatedAt(localProgress, remoteProgress, (p) => p.exerciseId);
+  const mergedStudyProgress = mergeByUpdatedAt(
+    localStudyProgress,
+    remoteStudyProgress,
+    (s) => s.lessonId
+  );
   const mergedActivity = mergeByUpdatedAt(localActivity, remoteActivity, (a) => a.date);
 
   const syncedAt = Date.now();
 
   await db.transaction(
     'rw',
-    [db.decks, db.cards, db.exercises, db.listeningProgress, db.dailyActivity, db.settings],
+    [
+      db.decks,
+      db.cards,
+      db.exercises,
+      db.listeningProgress,
+      db.studyProgress,
+      db.dailyActivity,
+      db.settings,
+    ],
     async () => {
       if (mergedDecks.length) await db.decks.bulkPut(mergedDecks);
       if (mergedCards.length) await db.cards.bulkPut(mergedCards);
       if (mergedExercises.length) await db.exercises.bulkPut(mergedExercises);
       if (mergedProgress.length) await db.listeningProgress.bulkPut(mergedProgress);
+      if (mergedStudyProgress.length) await db.studyProgress.bulkPut(mergedStudyProgress);
       if (mergedActivity.length) await db.dailyActivity.bulkPut(mergedActivity);
       await db.settings.update('singleton', { lastSyncedAt: syncedAt });
     }
@@ -253,6 +274,10 @@ export async function syncWithFirebase(config: FirebaseConfigData): Promise<Sync
     setDoc(decksRef, { items: sanitizeForFirestore(mergedDecks), updatedAt: syncedAt }),
     setDoc(exercisesRef, { items: sanitizeForFirestore(mergedExercises), updatedAt: syncedAt }),
     setDoc(progressRef, { items: sanitizeForFirestore(mergedProgress), updatedAt: syncedAt }),
+    setDoc(studyProgressRef, {
+      items: sanitizeForFirestore(mergedStudyProgress),
+      updatedAt: syncedAt,
+    }),
     setDoc(activityRef, { items: sanitizeForFirestore(mergedActivity), updatedAt: syncedAt }),
     ...cardChunks.map((chunk, i) =>
       setDoc(doc(firestore, 'users', uid, 'kotoba_data', `cards_${i}`), {

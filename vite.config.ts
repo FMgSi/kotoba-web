@@ -10,11 +10,12 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-          anki: ['jszip', 'sql.js', 'fzstd'],
-          react: ['react', 'react-dom'],
-          study: ['dexie', 'ts-fsrs', 'wanakana', 'lucide-react'],
+        manualChunks(id) {
+          if (id.includes('firebase')) return 'firebase';
+          if (id.includes('jszip') || id.includes('sql.js') || id.includes('fzstd')) return 'anki';
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react';
+          if (id.includes('dexie') || id.includes('ts-fsrs') || id.includes('wanakana') || id.includes('lucide-react')) return 'study';
+          if (id.includes('/src/data/')) return 'course-data';
         },
       },
     },
