@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   GraduationCap,
   CheckCircle2,
@@ -16,23 +16,27 @@ import { StudyLessonView } from '../components/study/StudyLessonView';
 
 interface StudyPageProps {
   language: Language;
+  activeLessonId: string | null;
   studyProgressList: StudyLessonProgress[];
   decks: Deck[];
   cards: VocabCard[];
   ttsRate: number;
+  onOpenLesson: (lessonId: string) => void;
+  onCloseLesson: () => void;
   onDataChanged: () => Promise<void>;
 }
 
 export const StudyPage: React.FC<StudyPageProps> = ({
   language,
+  activeLessonId,
   studyProgressList,
   decks,
   cards,
   ttsRate,
+  onOpenLesson,
+  onCloseLesson,
   onDataChanged,
 }) => {
-  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
-
   const stages = language === 'en' ? EN_STUDY_STAGES : JP_STUDY_STAGES;
   const lessons = language === 'en' ? EN_STUDY_LESSONS : JP_STUDY_LESSONS;
 
@@ -57,10 +61,6 @@ export const StudyPage: React.FC<StudyPageProps> = ({
     [lessons, progressMap]
   );
 
-  useEffect(() => {
-    setActiveLessonId(null);
-  }, [language]);
-
   if (activeLesson) {
     const curIdx = lessons.findIndex((l) => l.id === activeLesson.id);
     const nextLesson = curIdx >= 0 && curIdx < lessons.length - 1 ? lessons[curIdx + 1] : null;
@@ -72,10 +72,10 @@ export const StudyPage: React.FC<StudyPageProps> = ({
         cards={cards}
         ttsRate={ttsRate}
         hasNextLesson={Boolean(nextLesson)}
-        onBack={() => setActiveLessonId(null)}
+        onBack={onCloseLesson}
         onGoNextLesson={() => {
           if (nextLesson) {
-            setActiveLessonId(nextLesson.id);
+            onOpenLesson(nextLesson.id);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }}
@@ -120,7 +120,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             <div className="mt-5 flex flex-wrap items-center gap-3">
               {nextRecommendedLesson && (
                 <button
-                  onClick={() => setActiveLessonId(nextRecommendedLesson.id)}
+                  onClick={() => onOpenLesson(nextRecommendedLesson.id)}
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-extrabold text-indigo-700 shadow-md transition hover:bg-indigo-50"
                 >
                   <Play className="h-4 w-4 fill-current" />
@@ -284,7 +284,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
                       </div>
 
                       <button
-                        onClick={() => setActiveLessonId(lesson.id)}
+                        onClick={() => onOpenLesson(lesson.id)}
                         className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
                           isDone
                             ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'

@@ -31,6 +31,12 @@ import type {
 } from './types';
 import { db, DEFAULT_SETTINGS, ensureSeededDatabase } from './lib/db';
 import {
+  goBackOrFallback,
+  pushRoute,
+  replaceRoute,
+  useHashRoute,
+} from './lib/router';
+import {
   signInWithGoogleAccount,
   signOutGoogleAccount,
   subscribeGoogleAuth,
@@ -59,8 +65,10 @@ const NAV_ITEMS: {
 ];
 
 export default function App() {
+  const route = useHashRoute();
+  const activeTab = route.tab;
+
   const [ready, setReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [authUser, setAuthUser] = useState<AuthUserInfo | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
@@ -186,10 +194,27 @@ export default function App() {
     document.documentElement.classList.toggle('dark', settings.darkMode);
   }, [settings.darkMode]);
 
+  // Keep language aligned when Browser Back/Forward jumps across EN & JP deep links
+  useEffect(() => {
+    if (!ready || !route.itemId) return;
+    const id = route.itemId;
+    const inferred: Language | null =
+      id.startsWith('jp-') || id.startsWith('ex-jp-') || id.startsWith('deck-jp-')
+        ? 'jp'
+        : id.startsWith('en-') || id.startsWith('ex-en-') || id.startsWith('deck-en-')
+        ? 'en'
+        : null;
+    if (inferred && inferred !== settingsRef.current.activeLanguage) {
+      const next: UserSettings = { ...settingsRef.current, activeLanguage: inferred };
+      setSettings(next);
+      void db.settings.put(next);
+    }
+  }, [ready, route.itemId]);
+
   const handleGoogleSignIn = useCallback(async () => {
     const cfg = settingsRef.current.firebaseConfig;
     if (!cfg?.apiKey || !cfg?.projectId) {
-      setActiveTab('settings');
+      pushRoute({ tab: 'settings' });
       return;
     }
     setAuthBusy(true);
@@ -233,11 +258,20 @@ export default function App() {
     await db.settings.put(next);
   }
 
+  function handleSwitchLanguage(nextLang: Language) {
+    if (nextLang === settings.activeLanguage) return;
+    void updateSettings({ activeLanguage: nextLang });
+    // If currently inside a language-specific lesson/deck/exercise, cleanly step back to that tab's list
+    if (route.itemId) {
+      replaceRoute({ tab: route.tab });
+    }
+  }
+
   function handleNavigate(tab: NavTab, lang?: Language) {
     if (lang && lang !== settings.activeLanguage) {
       void updateSettings({ activeLanguage: lang });
     }
-    setActiveTab(tab);
+    pushRoute({ tab });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -303,7 +337,7 @@ export default function App() {
             {/* EN / JP Switcher */}
             <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-700 dark:bg-slate-800">
               <button
-                onClick={() => void updateSettings({ activeLanguage: 'en' })}
+                onClick={() => handleSwitchLanguage('en')}
                 className={`rounded-lg px-2.5 py-1 text-xs font-extrabold transition ${
                   activeLang === 'en'
                     ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-300'
@@ -313,7 +347,7 @@ export default function App() {
                 🇬🇧 EN
               </button>
               <button
-                onClick={() => void updateSettings({ activeLanguage: 'jp' })}
+                onClick={() => handleSwitchLanguage('jp')}
                 className={`rounded-lg px-2.5 py-1 text-xs font-extrabold transition ${
                   activeLang === 'jp'
                     ? 'bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-300'
@@ -408,10 +442,13 @@ export default function App() {
         {activeTab === 'study' && (
           <StudyPage
             language={activeLang}
+            activeLessonId={route.itemId ?? null}
             studyProgressList={studyProgressList}
             decks={decks}
             cards={cards}
             ttsRate={activeTtsRate}
+            onOpenLesson={(lessonId) => pushRoute({ tab: 'study', itemId: lessonId })}
+            onCloseLesson={() => goBackOrFallback({ tab: 'study' })}
             onDataChanged={handleDataChanged}
           />
         )}
@@ -419,11 +456,17 @@ export default function App() {
         {activeTab === 'vocab' && (
           <VocabPage
             language={activeLang}
+            studyingDeckId={route.itemId ?? null}
+            practiceAllMode={Boolean(route.practiceAll)}
             decks={decks}
             cards={cards}
             jpStudyMode={settings.jpStudyMode}
             ttsRate={activeTtsRate}
             autoPlay={settings.autoPlayAudio}
+            onStartStudy={(deckId, practiceAll) =>
+              pushRoute({ tab: 'vocab', itemId: deckId, practiceAll })
+            }
+            onExitStudy={() => goBackOrFallback({ tab: 'vocab' })}
             onChangeJpMode={(mode: JpStudyMode) => void updateSettings({ jpStudyMode: mode })}
             onDataChanged={handleDataChanged}
           />
@@ -432,9 +475,12 @@ export default function App() {
         {activeTab === 'listening' && (
           <ListeningPage
             language={activeLang}
+            activeExerciseId={route.itemId ?? null}
             exercises={exercises}
             progressList={progressList}
             decks={decks}
+            onOpenExercise={(exerciseId) => pushRoute({ tab: 'listening', itemId: exerciseId })}
+            onCloseExercise={() => goBackOrFallback({ tab: 'listening' })}
             onDataChanged={handleDataChanged}
           />
         )}
@@ -463,7 +509,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.6 · Japanese handwriting engine powered by{' '}
+        KotobaLab v1.7 · Japanese handwriting engine powered by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"

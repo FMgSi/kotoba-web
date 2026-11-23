@@ -16,20 +16,25 @@ import { CreateExerciseModal } from '../components/listening/CreateExerciseModal
 
 interface ListeningPageProps {
   language: Language;
+  activeExerciseId: string | null;
   exercises: ListeningExercise[];
   progressList: ListeningProgress[];
   decks: Deck[];
+  onOpenExercise: (exerciseId: string) => void;
+  onCloseExercise: () => void;
   onDataChanged: () => Promise<void>;
 }
 
 export const ListeningPage: React.FC<ListeningPageProps> = ({
   language,
+  activeExerciseId,
   exercises,
   progressList,
   decks,
+  onOpenExercise,
+  onCloseExercise,
   onDataChanged,
 }) => {
-  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -60,7 +65,6 @@ export const ListeningPage: React.FC<ListeningPageProps> = ({
   );
 
   useEffect(() => {
-    setActiveExerciseId(null);
     setSelectedCategory('ALL');
   }, [language]);
 
@@ -76,7 +80,7 @@ export const ListeningPage: React.FC<ListeningPageProps> = ({
         exercise={activeExercise}
         progress={progressMap.get(activeExercise.id)}
         decks={decks}
-        onBack={() => setActiveExerciseId(null)}
+        onBack={onCloseExercise}
         onProgressUpdated={onDataChanged}
       />
     );
@@ -213,7 +217,7 @@ export const ListeningPage: React.FC<ListeningPageProps> = ({
               </div>
 
               <button
-                onClick={() => setActiveExerciseId(ex.id)}
+                onClick={() => onOpenExercise(ex.id)}
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-500"
               >
                 <Play className="h-4 w-4 fill-current" />
@@ -231,7 +235,7 @@ export const ListeningPage: React.FC<ListeningPageProps> = ({
           onCreated={async (created) => {
             setShowCreate(false);
             await onDataChanged();
-            setActiveExerciseId(created.id);
+            onOpenExercise(created.id);
           }}
         />
       )}

@@ -21,30 +21,36 @@ import { JapaneseHandwritingReview } from '../components/vocab/JapaneseHandwriti
 
 interface VocabPageProps {
   language: Language;
+  studyingDeckId: string | null;
+  practiceAllMode: boolean;
   decks: Deck[];
   cards: VocabCard[];
   jpStudyMode: JpStudyMode;
   ttsRate: number;
   autoPlay: boolean;
+  onStartStudy: (deckId: string, practiceAll: boolean) => void;
+  onExitStudy: () => void;
   onChangeJpMode: (mode: JpStudyMode) => void;
   onDataChanged: () => Promise<void>;
 }
 
 export const VocabPage: React.FC<VocabPageProps> = ({
   language,
+  studyingDeckId,
+  practiceAllMode,
   decks,
   cards,
   jpStudyMode,
   ttsRate,
   autoPlay,
+  onStartStudy,
+  onExitStudy,
   onChangeJpMode,
   onDataChanged,
 }) => {
-  const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
   const [browsingDeckId, setBrowsingDeckId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [practiceAllMode, setPracticeAllMode] = useState(false);
 
   const langDecks = useMemo(
     () => decks.filter((d) => d.language === language && !d.deleted),
@@ -90,9 +96,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({
   }, [browsingDeckId, langCards, searchQuery]);
 
   useEffect(() => {
-    setStudyingDeckId(null);
     setBrowsingDeckId(null);
-    setPracticeAllMode(false);
   }, [language]);
 
   async function handleRateCard(
@@ -140,10 +144,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({
           autoPlay={autoPlay}
           onChangeMode={onChangeJpMode}
           onRate={(card, rating, usedHandwriting) => handleRateCard(card, rating, usedHandwriting)}
-          onExit={() => {
-            setStudyingDeckId(null);
-            setPracticeAllMode(false);
-          }}
+          onExit={onExitStudy}
         />
       );
     }
@@ -155,10 +156,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({
         ttsRate={ttsRate}
         autoPlay={autoPlay}
         onRate={(card, rating) => handleRateCard(card, rating, false)}
-        onExit={() => {
-          setStudyingDeckId(null);
-          setPracticeAllMode(false);
-        }}
+        onExit={onExitStudy}
       />
     );
   }
@@ -205,10 +203,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({
 
           {totalDue > 0 && (
             <button
-              onClick={() => {
-                setPracticeAllMode(false);
-                setStudyingDeckId('ALL');
-              }}
+              onClick={() => onStartStudy('ALL', false)}
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700"
             >
               <Play className="h-4 w-4 fill-current" />
@@ -300,10 +295,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({
 
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => {
-                      setPracticeAllMode(dueCount === 0);
-                      setStudyingDeckId(deck.id);
-                    }}
+                    onClick={() => onStartStudy(deck.id, dueCount === 0)}
                     disabled={deckCards.length === 0}
                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-40"
                   >
