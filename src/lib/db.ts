@@ -89,8 +89,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   activeLanguage: 'en',
   darkMode: false,
   autoSync: true,
-  ttsRateEn: 0.9,
-  ttsRateJp: 0.85,
+  ttsRateEn: 0.95,
+  ttsRateJp: 0.95,
+  enAccent: 'us',
   jpStudyMode: 'handwriting',
   autoPlayAudio: true,
 };

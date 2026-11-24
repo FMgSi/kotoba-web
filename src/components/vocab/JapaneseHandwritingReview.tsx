@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Volume2,
+  Snail,
   CheckCircle2,
   XCircle,
   Delete,
@@ -231,7 +232,16 @@ export const JapaneseHandwritingReview: React.FC<JapaneseHandwritingReviewProps>
               className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-indigo-700 shadow-sm ring-1 ring-slate-200 hover:bg-indigo-50 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700"
             >
               <Volume2 className="h-4 w-4" />
-              Nghe phát âm tiếng Nhật
+              Nghe phát âm chuẩn
+            </button>
+
+            <button
+              type="button"
+              onClick={() => speakText(currentCard.front, 'jp', { rate: 0.72 })}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
+            >
+              <Snail className="h-3.5 w-3.5" />
+              Chậm
             </button>
 
             {studyMode !== 'flip' && verifiedState === 'idle' && (

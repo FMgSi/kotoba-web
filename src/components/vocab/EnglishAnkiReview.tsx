@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Volume2, Eye, RotateCcw, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Volume2, Eye, RotateCcw, CheckCircle2, ArrowLeft, Snail } from 'lucide-react';
 import type { VocabCard } from '../../types';
 import { previewRatings, type ReviewRating } from '../../lib/fsrs';
-import { speakText } from '../../lib/tts';
+import { lookupEnglishDictionary, speakText } from '../../lib/tts';
 
 interface EnglishAnkiReviewProps {
   queue: VocabCard[];
@@ -55,6 +55,8 @@ export const EnglishAnkiReview: React.FC<EnglishAnkiReviewProps> = ({
 }) => {
   const [revealed, setRevealed] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
+  const [liveIpa, setLiveIpa] = useState<string | null>(null);
+  const [audioBadge, setAudioBadge] = useState<'dict-mp3' | 'neural-tts' | null>(null);
   const currentCard = queue[0];
 
   const intervals = useMemo(
@@ -64,9 +66,28 @@ export const EnglishAnkiReview: React.FC<EnglishAnkiReviewProps> = ({
 
   useEffect(() => {
     setRevealed(false);
-    if (currentCard && autoPlay) {
-      speakText(currentCard.front, currentCard.language, ttsRate);
+    setLiveIpa(null);
+    setAudioBadge(null);
+    if (!currentCard) return;
+
+    let active = true;
+    if (!currentCard.reading && currentCard.language === 'en') {
+      void lookupEnglishDictionary(currentCard.front).then((info) => {
+        if (active && info?.ipa) setLiveIpa(info.ipa);
+      });
     }
+
+    if (autoPlay) {
+      speakText(currentCard.front, currentCard.language, {
+        rate: ttsRate,
+        onSourceUsed: (src) => {
+          if (active && (src === 'dict-mp3' || src === 'neural-tts')) setAudioBadge(src);
+        },
+      });
+    }
+    return () => {
+      active = false;
+    };
   }, [currentCard?.id, autoPlay, ttsRate]);
 
   useEffect(() => {
@@ -153,19 +174,48 @@ export const EnglishAnkiReview: React.FC<EnglishAnkiReviewProps> = ({
             {currentCard.front}
           </div>
 
-          {currentCard.reading && (
+          {(currentCard.reading || liveIpa) && (
             <div className="mt-2 font-mono text-base text-slate-500 dark:text-slate-400">
-              {currentCard.reading}
+              {currentCard.reading || liveIpa}
             </div>
           )}
 
-          <button
-            onClick={() => speakText(currentCard.front, currentCard.language, ttsRate)}
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-100 hover:text-indigo-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-indigo-950"
-          >
-            <Volume2 className="h-4 w-4" />
-            Nghe phát âm
-          </button>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() =>
+                speakText(currentCard.front, currentCard.language, {
+                  rate: ttsRate,
+                  onSourceUsed: (src) => {
+                    if (src === 'dict-mp3' || src === 'neural-tts') setAudioBadge(src);
+                  },
+                })
+              }
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-950/70 dark:text-indigo-300 dark:hover:bg-indigo-950"
+            >
+              <Volume2 className="h-4 w-4" />
+              Nghe chuẩn
+            </button>
+
+            <button
+              onClick={() =>
+                speakText(currentCard.front, currentCard.language, {
+                  rate: 0.68,
+                  preferNativeAudio: false,
+                })
+              }
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Đọc chậm rõ từng âm tiết"
+            >
+              <Snail className="h-3.5 w-3.5" />
+              Đọc chậm
+            </button>
+          </div>
+
+          {audioBadge && (
+            <span className="mt-2 text-[10px] font-medium text-slate-400">
+              {audioBadge === 'dict-mp3' ? 'Giọng thu âm bản xứ (Dictionary)' : 'Giọng Neural tự nhiên'}
+            </span>
+          )}
         </div>
 
         {/* Back answer */}

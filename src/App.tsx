@@ -30,6 +30,7 @@ import type {
   VocabCard,
 } from './types';
 import { db, DEFAULT_SETTINGS, ensureSeededDatabase } from './lib/db';
+import { configureAudioPreferences } from './lib/tts';
 import {
   goBackOrFallback,
   pushRoute,
@@ -193,6 +194,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.darkMode);
   }, [settings.darkMode]);
+
+  // Sync preferred voice & accent into audio engine
+  useEffect(() => {
+    configureAudioPreferences({
+      enAccent: settings.enAccent ?? 'us',
+      voiceNameEn: settings.voiceNameEn,
+      voiceNameJp: settings.voiceNameJp,
+    });
+  }, [settings.enAccent, settings.voiceNameEn, settings.voiceNameJp]);
 
   // Keep language aligned when Browser Back/Forward jumps across EN & JP deep links
   useEffect(() => {
@@ -509,7 +519,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.7 · Japanese handwriting engine powered by{' '}
+        KotobaLab v1.8 · Handwriting by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"
@@ -518,7 +528,16 @@ export default function App() {
         >
           KanjiCanvas (MIT)
         </a>{' '}
-        · SRS powered by ts-fsrs
+        · Kana Audio by{' '}
+        <a
+          href="https://github.com/veardk/just-gojuon"
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-indigo-500"
+        >
+          just-gojuon (MIT)
+        </a>{' '}
+        · SRS by ts-fsrs
       </footer>
 
       {/* Mobile Bottom Navigation */}

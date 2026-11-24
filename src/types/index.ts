@@ -114,6 +114,9 @@ export interface UserSettings {
   autoSync: boolean;
   ttsRateEn: number;
   ttsRateJp: number;
+  enAccent?: 'us' | 'uk';
+  voiceNameEn?: string;
+  voiceNameJp?: string;
   jpStudyMode: JpStudyMode;
   autoPlayAudio: boolean;
   firebaseConfig?: FirebaseConfigData;

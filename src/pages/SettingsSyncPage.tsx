@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Cloud,
   RefreshCw,
@@ -15,10 +15,12 @@ import {
   Lock,
   LogIn,
   LogOut,
+  Volume2,
 } from 'lucide-react';
 import type { AuthUserInfo, FirebaseConfigData, UserSettings } from '../types';
 import { parseFirebaseSnippet, syncWithFirebase } from '../lib/firebaseSync';
 import { db, exportFullBackupJson, importFullBackupJson } from '../lib/db';
+import { ensureVoicesReady, getRankedVoices, speakText } from '../lib/tts';
 
 interface SettingsSyncPageProps {
   settings: UserSettings;
@@ -65,6 +67,20 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
     null
   );
   const [copiedRules, setCopiedRules] = useState(false);
+  const [enVoices, setEnVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [jpVoices, setJpVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void ensureVoicesReady(800).then(() => {
+      if (!active) return;
+      setEnVoices(getRankedVoices('en', settings.enAccent ?? 'us'));
+      setJpVoices(getRankedVoices('jp'));
+    });
+    return () => {
+      active = false;
+    };
+  }, [settings.enAccent]);
 
   const currentConfig: FirebaseConfigData | null =
     apiKey.trim() && projectId.trim() && appId.trim()
@@ -200,6 +216,101 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
             Tùy chỉnh giọng đọc & học tập
           </h2>
           <div className="mt-4 space-y-4 text-sm">
+            {/* English Accent & Voice Picker */}
+            <div className="space-y-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  🇬🇧 Giọng Tiếng Anh
+                </span>
+                <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] font-bold dark:border-slate-700 dark:bg-slate-800">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void updateAudioPreference({ enAccent: 'us', voiceNameEn: '' })
+                    }
+                    className={`rounded-md px-2 py-0.5 ${
+                      (settings.enAccent ?? 'us') === 'us'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-500 dark:text-slate-300'
+                    }`}
+                  >
+                    Mỹ (US)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void updateAudioPreference({ enAccent: 'uk', voiceNameEn: '' })
+                    }
+                    className={`rounded-md px-2 py-0.5 ${
+                      settings.enAccent === 'uk'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-500 dark:text-slate-300'
+                    }`}
+                  >
+                    Anh (UK)
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={settings.voiceNameEn || ''}
+                  onChange={(e) => void updateAudioPreference({ voiceNameEn: e.target.value })}
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="">Tự động chọn giọng Neural chuẩn nhất</option>
+                  {enVoices.slice(0, 15).map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => speakText('Good morning, schedule and humidity.', 'en', settings.ttsRateEn)}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700"
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  Thử
+                </button>
+              </div>
+            </div>
+
+            {/* Japanese Voice Picker */}
+            <div className="space-y-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/60">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  🇯🇵 Giọng Tiếng Nhật (Từ & Câu)
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Bảng chữ cái: MP3 bản xứ
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={settings.voiceNameJp || ''}
+                  onChange={(e) => void updateAudioPreference({ voiceNameJp: e.target.value })}
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="">Tự động chọn giọng Neural (七海 / Nanami)</option>
+                  {jpVoices.map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    speakText('おはようございます。にほんごを べんきょうします。', 'jp', settings.ttsRateJp)
+                  }
+                  className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700"
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  Thử
+                </button>
+              </div>
+            </div>
+
             <div>
               <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
                 <span>Tốc độ đọc Tiếng Anh</span>
@@ -207,7 +318,7 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
               </div>
               <input
                 type="range"
-                min={0.6}
+                min={0.65}
                 max={1.3}
                 step={0.05}
                 value={settings.ttsRateEn}
@@ -223,8 +334,8 @@ export const SettingsSyncPage: React.FC<SettingsSyncPageProps> = ({
               </div>
               <input
                 type="range"
-                min={0.6}
-                max={1.2}
+                min={0.65}
+                max={1.25}
                 step={0.05}
                 value={settings.ttsRateJp}
                 onChange={(e) => void updateAudioPreference({ ttsRateJp: Number(e.target.value) })}
