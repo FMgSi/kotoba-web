@@ -631,7 +631,7 @@ export const DictationPlayer: React.FC<DictationPlayerProps> = ({
                   ? 'Type what you hear... (Nhấn Ctrl để nghe lại, Enter để kiểm tra)'
                   : 'Gõ những gì bạn nghe được (vd: ohayou → おはよう)...'
               }
-              className="font-jp w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-4 text-lg font-medium text-slate-900 placeholder:text-slate-400 transition focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-indigo-400 dark:focus:bg-slate-800"
+              className="font-jp w-full resize-none rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-4 text-lg font-medium text-slate-900 placeholder:text-slate-400 transition focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-[#3f4147] dark:bg-[#1e1f22] dark:text-[#f2f3f5] dark:placeholder:text-[#949ba4] dark:focus:border-[#5865f2] dark:focus:bg-[#1e1f22]"
             />
 
             {/* Optional Japanese Handwriting Pad right inside Dictation! */}

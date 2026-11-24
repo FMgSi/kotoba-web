@@ -287,8 +287,8 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="flex flex-col items-center gap-3 text-indigo-600">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#313338]">
+        <div className="flex flex-col items-center gap-3 text-indigo-600 dark:text-[#8ea1e1]">
           <Sparkles className="h-9 w-9 animate-pulse" />
           <span className="text-sm font-bold">Đang khởi động KotobaLab...</span>
         </div>
@@ -300,16 +300,16 @@ export default function App() {
   const activeTtsRate = activeLang === 'jp' ? settings.ttsRateJp : settings.ttsRateEn;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:pb-10">
+    <div className="min-h-screen bg-slate-50 pb-20 text-slate-900 dark:bg-[#313338] dark:text-[#f2f3f5] md:pb-10">
       {/* Top Sticky Header */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/90">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-[#1f2023] dark:bg-[#2b2d31]/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
           {/* Brand */}
           <button
             onClick={() => handleNavigate('dashboard')}
             className="flex items-center gap-2.5 text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-base font-black text-white shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-base font-black text-white shadow-sm dark:bg-[#5865f2] dark:bg-none">
               言
             </div>
             <div className="hidden sm:block">
@@ -331,8 +331,8 @@ export default function App() {
                   onClick={() => handleNavigate(item.id)}
                   className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition ${
                     active
-                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                      ? 'bg-indigo-50 text-indigo-700 dark:bg-[#404249] dark:text-[#f2f3f5]'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-[#b5bac1] dark:hover:bg-[#35373c] dark:hover:text-[#f2f3f5]'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -519,7 +519,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.8 · Handwriting by{' '}
+        KotobaLab v1.9 · Handwriting by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"
@@ -541,7 +541,7 @@ export default function App() {
       </footer>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-1.5 backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/95">
+      <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-1.5 backdrop-blur-md md:hidden dark:border-[#1f2023] dark:bg-[#2b2d31]/95">
         <div className="grid grid-cols-5 gap-1">
           {NAV_ITEMS.filter((i) => i.id !== 'reading' && i.id !== 'writing').map((item) => {
             const Icon = item.icon;

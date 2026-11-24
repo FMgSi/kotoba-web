@@ -662,7 +662,7 @@ export const StudyLessonView: React.FC<StudyLessonViewProps> = ({
                       }
                     }}
                     placeholder="Nhập đáp án của bạn..."
-                    className="font-jp w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:bg-slate-800"
+                    className="font-jp w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-[#3f4147] dark:bg-[#1e1f22] dark:text-[#f2f3f5] dark:placeholder:text-[#949ba4] dark:focus:border-[#5865f2] dark:focus:bg-[#1e1f22]"
                   />
                 </div>
               )}

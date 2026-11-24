@@ -7,15 +7,71 @@
     font-family: 'Inter', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
   }
 
+  /* Discord-inspired calm matte charcoal Dark Mode */
+  html.dark {
+    color-scheme: dark;
+    --color-slate-950: #1e1f22; /* Recessed inputs, canvas wells, sub-surfaces */
+    --color-slate-900: #2b2d31; /* Cards, panels, top header */
+    --color-slate-800: #383a40; /* Elevated controls, hover states, dividers */
+    --color-slate-700: #43464d; /* Subtle control borders */
+    --color-slate-600: #4e5058;
+    --color-slate-500: #949ba4; /* Discord muted text (readable, low glare) */
+    --color-slate-400: #b5bac1; /* Discord secondary text */
+    --color-slate-300: #dbdee1; /* Discord body text */
+    --color-slate-200: #ebedef;
+    --color-slate-100: #f2f3f5; /* Discord primary text */
+
+    /* Discord Blurple accent */
+    --color-indigo-600: #5865f2;
+    --color-indigo-700: #4752c4;
+    --color-indigo-500: #5865f2;
+    --color-indigo-400: #8ea1e1;
+    --color-indigo-300: #b4beff;
+    --color-indigo-950: #2f334d;
+    --color-indigo-900: #3c4266;
+
+    /* Discord muted semantic surfaces */
+    --color-emerald-600: #248046;
+    --color-emerald-700: #1a6334;
+    --color-emerald-500: #23a559;
+    --color-emerald-400: #4ade80;
+    --color-emerald-300: #86efac;
+    --color-emerald-950: #1f3329;
+    --color-emerald-900: #264234;
+
+    --color-rose-600: #da373c;
+    --color-rose-700: #a1282c;
+    --color-rose-400: #f87171;
+    --color-rose-300: #fca5a5;
+    --color-rose-950: #382528;
+    --color-rose-900: #4f2f34;
+
+    --color-amber-950: #383022;
+    --color-amber-900: #4f4128;
+    --color-amber-300: #f6c967;
+
+    --color-sky-950: #21303f;
+    --color-sky-900: #2a4054;
+    --color-sky-300: #7dd3fc;
+
+    --color-violet-950: #2f2a42;
+    --color-violet-900: #40375c;
+  }
+
+  html.dark body {
+    background-color: #313338;
+    color: #f2f3f5;
+  }
+
   .font-jp {
     font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
   }
 }
 
-/* Custom subtle scrollbars */
+/* Discord-style flat subtle scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -27,8 +83,12 @@
   border-radius: 9999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1a1b1e;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4e5058;
 }
 
 /* Handwriting canvas paper guidelines */
@@ -38,4 +98,10 @@
     linear-gradient(to bottom, rgba(99, 102, 241, 0.14) 1px, transparent 1px);
   background-size: 50% 50%;
   background-position: -0.5px -0.5px;
+}
+
+html.dark .writing-grid {
+  background-image:
+    linear-gradient(to right, rgba(181, 186, 193, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(181, 186, 193, 0.1) 1px, transparent 1px);
 }

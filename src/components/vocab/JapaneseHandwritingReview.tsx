@@ -203,7 +203,7 @@ export const JapaneseHandwritingReview: React.FC<JapaneseHandwritingReviewProps>
       {/* Main Prompt Card */}
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         {/* Prompt Header: Vietnamese Meaning + Audio */}
-        <div className="border-b border-slate-100 bg-gradient-to-br from-rose-50/70 via-white to-indigo-50/60 p-6 text-center dark:border-slate-800 dark:from-rose-950/20 dark:via-slate-900 dark:to-indigo-950/20">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-rose-50/70 via-white to-indigo-50/60 p-6 text-center dark:border-[#3f4147] dark:bg-[#232428] dark:bg-none">
           <div className="flex items-center justify-center gap-2">
             <span className="rounded-full bg-rose-100 px-3 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/70 dark:text-rose-300">
               {suggestedScope === 'katakana'

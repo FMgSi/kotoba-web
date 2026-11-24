@@ -88,9 +88,9 @@ export const StudyPage: React.FC<StudyPageProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Study Course Hero Banner */}
+      {/* Study Course Hero Banner — Calm Discord matte panel in Dark Mode */}
       <div
-        className={`relative overflow-hidden rounded-3xl p-6 text-white shadow-lg sm:p-8 ${
+        className={`relative overflow-hidden rounded-3xl p-6 text-white shadow-lg sm:p-8 dark:border dark:border-[#3f4147] dark:bg-[#2b2d31] dark:bg-none dark:text-[#f2f3f5] dark:shadow-none ${
           language === 'en'
             ? 'bg-gradient-to-br from-sky-600 via-indigo-600 to-violet-700'
             : 'bg-gradient-to-br from-rose-600 via-pink-600 to-indigo-700'
@@ -98,7 +98,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
       >
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm dark:bg-[#5865f2]/20 dark:text-[#b4beff]">
               <GraduationCap className="h-4 w-4" />
               {language === 'en'
                 ? 'Khóa học tự học có hệ thống · Tham khảo IELTS Từ Đầu by Thế Quang'
@@ -111,7 +111,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
                 : 'Lộ Trình Tiếng Nhật 0 → N3 (Study)'}
             </h1>
 
-            <p className="mt-1.5 text-sm text-white/90">
+            <p className="mt-1.5 text-sm text-white/90 dark:text-[#b5bac1]">
               {language === 'en'
                 ? '10 bài học trọng tâm chia thành 3 chặng (Nền tảng → Streamline 4 kỹ năng → Thực chiến Cambridge) kèm 40 bài tập tương tác & từ vựng đẩy thẳng sang Anki.'
                 : '12 bài học chuẩn lộ trình 4 chặng (Bảng chữ cái → N5 Minna 1–25 → N4 Minna 26–50 → N3 Trung cấp) kèm 48 bài tập tương tác & từ vựng đẩy thẳng sang Anki.'}
@@ -121,7 +121,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
               {nextRecommendedLesson && (
                 <button
                   onClick={() => onOpenLesson(nextRecommendedLesson.id)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-extrabold text-indigo-700 shadow-md transition hover:bg-indigo-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-extrabold text-indigo-700 shadow-md transition hover:bg-indigo-50 dark:bg-[#5865f2] dark:text-white dark:shadow-none dark:hover:bg-[#4752c4]"
                 >
                   <Play className="h-4 w-4 fill-current" />
                   {completedCount === 0
@@ -138,7 +138,7 @@ export const StudyPage: React.FC<StudyPageProps> = ({
                 }
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/25"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/25 dark:border dark:border-[#3f4147] dark:bg-[#383a40] dark:text-[#dbdee1] dark:hover:bg-[#43464d]"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 {language === 'en' ? 'Kênh IELTS Từ Đầu (@ieltstudau)' : 'Kênh Dũng Mori (@DungMori)'}
@@ -146,14 +146,14 @@ export const StudyPage: React.FC<StudyPageProps> = ({
             </div>
           </div>
 
-          {/* Progress Circle / Box */}
-          <div className="min-w-[160px] rounded-2xl bg-white/15 p-4 text-center backdrop-blur-md">
+          {/* Progress Box */}
+          <div className="min-w-[160px] rounded-2xl bg-white/15 p-4 text-center backdrop-blur-md dark:border dark:border-[#3f4147] dark:bg-[#1e1f22]">
             <div className="text-3xl font-black">{pct}%</div>
-            <div className="mt-0.5 text-xs font-semibold text-white/90">
+            <div className="mt-0.5 text-xs font-semibold text-white/90 dark:text-[#b5bac1]">
               {completedCount} / {lessons.length} bài hoàn thành
             </div>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/25">
-              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${pct}%` }} />
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/25 dark:bg-[#383a40]">
+              <div className="h-full rounded-full bg-white transition-all dark:bg-[#5865f2]" style={{ width: `${pct}%` }} />
             </div>
           </div>
         </div>

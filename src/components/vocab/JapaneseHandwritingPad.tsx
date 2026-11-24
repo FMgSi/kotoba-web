@@ -27,14 +27,14 @@ const STROKE_COLORS_LIGHT = [
 ];
 
 const STROKE_COLORS_DARK = [
-  '#818cf8',
-  '#38bdf8',
-  '#2dd4bf',
-  '#fbbf24',
-  '#fb7185',
-  '#a78bfa',
-  '#34d399',
-  '#60a5fa',
+  '#f2f3f5',
+  '#8ea1e1',
+  '#57f287',
+  '#fee75c',
+  '#eb459e',
+  '#b4beff',
+  '#6ee7b7',
+  '#7dd3fc',
 ];
 
 export const JapaneseHandwritingPad: React.FC<JapaneseHandwritingPadProps> = ({

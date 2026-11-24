@@ -124,27 +124,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Welcome Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 p-6 text-white shadow-lg sm:p-8">
+      {/* Welcome Hero — Calm flat charcoal panel in Dark Mode (Discord-style) */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 p-6 text-white shadow-lg sm:p-8 dark:border dark:border-[#3f4147] dark:bg-[#2b2d31] dark:bg-none dark:text-[#f2f3f5] dark:shadow-none">
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-sm dark:bg-[#5865f2]/20 dark:text-[#b4beff]">
               <Sparkles className="h-3.5 w-3.5" />
               Góc tự học cá nhân · Anh (A2→IELTS) & Nhật (Kana→N5)
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">
               Chào mừng trở lại KotobaLab!
             </h1>
-            <p className="mt-1.5 max-w-xl text-sm text-indigo-100">
-              Hôm nay bạn có <b>{enDue}</b> thẻ Tiếng Anh và <b>{jpDue}</b> thẻ Tiếng Nhật đến hạn ôn. Duy trì 15–30 phút mỗi ngày để lên trình đều nhé!
+            <p className="mt-1.5 max-w-xl text-sm text-indigo-100 dark:text-[#b5bac1]">
+              Hôm nay bạn có <b className="dark:text-white">{enDue}</b> thẻ Tiếng Anh và <b className="dark:text-white">{jpDue}</b> thẻ Tiếng Nhật đến hạn ôn. Duy trì 15–30 phút mỗi ngày để lên trình đều nhé!
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl bg-white/15 px-5 py-3.5 backdrop-blur-md">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/15 px-5 py-3.5 backdrop-blur-md dark:border dark:border-[#3f4147] dark:bg-[#1e1f22]">
             <Flame className="h-9 w-9 text-amber-300" />
             <div>
               <div className="text-2xl font-extrabold leading-none">{streak} ngày</div>
-              <div className="mt-0.5 text-xs text-indigo-100">Chuỗi học liên tiếp</div>
+              <div className="mt-0.5 text-xs text-indigo-100 dark:text-[#949ba4]">Chuỗi học liên tiếp</div>
             </div>
           </div>
         </div>
