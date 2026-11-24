@@ -468,13 +468,14 @@ export default function App() {
             language={activeLang}
             studyingDeckId={route.itemId ?? null}
             practiceAllMode={Boolean(route.practiceAll)}
+            activeLessonTag={route.lessonTag ?? null}
             decks={decks}
             cards={cards}
             jpStudyMode={settings.jpStudyMode}
             ttsRate={activeTtsRate}
             autoPlay={settings.autoPlayAudio}
-            onStartStudy={(deckId, practiceAll) =>
-              pushRoute({ tab: 'vocab', itemId: deckId, practiceAll })
+            onStartStudy={(deckId, practiceAll, lessonTag) =>
+              pushRoute({ tab: 'vocab', itemId: deckId, practiceAll, lessonTag: lessonTag || undefined })
             }
             onExitStudy={() => goBackOrFallback({ tab: 'vocab' })}
             onChangeJpMode={(mode: JpStudyMode) => void updateSettings({ jpStudyMode: mode })}
@@ -519,7 +520,7 @@ export default function App() {
 
       {/* Footer Credit */}
       <footer className="mx-auto mt-8 max-w-6xl px-4 text-center text-[11px] text-slate-400">
-        KotobaLab v1.9 · Handwriting by{' '}
+        KotobaLab v2.0 · Handwriting by{' '}
         <a
           href="https://github.com/asdfjkl/kanjicanvas"
           target="_blank"

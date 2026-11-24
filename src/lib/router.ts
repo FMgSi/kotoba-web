@@ -5,6 +5,7 @@ export interface AppRoute {
   tab: NavTab;
   itemId?: string;
   practiceAll?: boolean;
+  lessonTag?: string;
 }
 
 const VALID_TABS: NavTab[] = [
@@ -21,7 +22,11 @@ export function buildHashUrl(route: AppRoute): string {
   if (route.tab === 'dashboard') return '#/';
   if (route.tab === 'vocab' && route.itemId) {
     const encoded = encodeURIComponent(route.itemId);
-    return `#/vocab/review/${encoded}${route.practiceAll ? '?all=1' : ''}`;
+    const params = new URLSearchParams();
+    if (route.practiceAll) params.set('all', '1');
+    if (route.lessonTag) params.set('tag', route.lessonTag);
+    const qs = params.toString();
+    return `#/vocab/review/${encoded}${qs ? `?${qs}` : ''}`;
   }
   if ((route.tab === 'study' || route.tab === 'listening') && route.itemId) {
     return `#/${route.tab}/${encodeURIComponent(route.itemId)}`;
@@ -47,6 +52,7 @@ export function parseHashRoute(rawHash: string): AppRoute {
       tab: 'vocab',
       itemId: decodeURIComponent(segments[2]),
       practiceAll: params.get('all') === '1',
+      lessonTag: params.get('tag') || undefined,
     };
   }
 

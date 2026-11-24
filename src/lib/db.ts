@@ -18,7 +18,7 @@ import {
 } from '../data/starterVocab';
 import { STARTER_LISTENING_EXERCISES } from '../data/starterListening';
 
-const CURRENT_STARTER_VERSION = 2;
+const CURRENT_STARTER_VERSION = 3;
 
 export class KotobaDatabase extends Dexie {
   decks!: Table<Deck, string>;
@@ -119,18 +119,20 @@ export async function ensureSeededDatabase(): Promise<UserSettings> {
     await db.cards.bulkPut(STARTER_CARDS);
     await db.settings.update('singleton', { starterDataVersion: CURRENT_STARTER_VERSION });
   } else if (currentVersion < CURRENT_STARTER_VERSION) {
-    // One-time upgrade to v2: retire old sample starter decks & seed user's learn.apkg + 2 separate Kana alphabet decks
+    // Incremental non-destructive starter deck upgrade (v2: learn.apkg + Kana; v3: N5 Minna Vocab & Kanji)
     await db.transaction('rw', [db.decks, db.cards, db.settings], async () => {
-      for (const oldDeckId of LEGACY_STARTER_DECK_IDS) {
-        const d = await db.decks.get(oldDeckId);
-        if (d && !d.deleted) {
-          await db.decks.put({ ...d, deleted: true, updatedAt: V2_RETIRE_TIME });
+      if (currentVersion < 2) {
+        for (const oldDeckId of LEGACY_STARTER_DECK_IDS) {
+          const d = await db.decks.get(oldDeckId);
+          if (d && !d.deleted) {
+            await db.decks.put({ ...d, deleted: true, updatedAt: V2_RETIRE_TIME });
+          }
         }
-      }
-      for (const oldCardId of LEGACY_STARTER_CARD_IDS) {
-        const c = await db.cards.get(oldCardId);
-        if (c && !c.deleted) {
-          await db.cards.put({ ...c, deleted: true, updatedAt: V2_RETIRE_TIME });
+        for (const oldCardId of LEGACY_STARTER_CARD_IDS) {
+          const c = await db.cards.get(oldCardId);
+          if (c && !c.deleted) {
+            await db.cards.put({ ...c, deleted: true, updatedAt: V2_RETIRE_TIME });
+          }
         }
       }
       for (const newDeck of STARTER_DECKS) {

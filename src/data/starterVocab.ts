@@ -1,9 +1,12 @@
 import type { Deck, VocabCard } from '../types';
 import { LEARN_APKG_CARDS } from './englishLearnDeck';
+import { N5_MINNA_VOCAB } from './n5MinnaVocab';
+import { N5_MINNA_KANJI } from './n5MinnaKanji';
 
 // Deterministic timestamps (in the past) so cards are immediately due & multi-device sync never clobbers real reviews
 export const V2_SEED_TIME = 1795430000000;
 export const V2_RETIRE_TIME = 1795436700000;
+export const V3_SEED_TIME = 1795440000000;
 
 export const LEGACY_STARTER_DECK_IDS = [
   'deck-en-a2-ielts',
@@ -44,6 +47,26 @@ export const STARTER_DECKS: Deck[] = [
     source: 'starter',
     createdAt: V2_SEED_TIME,
     updatedAt: V2_SEED_TIME,
+  },
+  {
+    id: 'deck-jp-n5-minna-vocab',
+    name: 'Từ vựng N5 — Minna Tập 1 (500 từ · Bài 1→25)',
+    language: 'jp',
+    description:
+      'Kho 500 từ vựng N5 chuẩn lộ trình 25 bài Minna no Nihongo Tập 1 kèm Kanji tham khảo, câu ví dụ & lọc theo từng bài.',
+    source: 'starter',
+    createdAt: V3_SEED_TIME,
+    updatedAt: V3_SEED_TIME,
+  },
+  {
+    id: 'deck-jp-n5-kanji',
+    name: 'Kanji N5 — Minna Tập 1 (155 chữ · Bài 1→25)',
+    language: 'jp',
+    description:
+      '155 chữ Hán N5 cốt lõi theo tiến trình Minna Tập 1, đầy đủ Hán-Việt, âm On/Kun, mẹo nhớ và hướng dẫn thứ tự nét viết tay.',
+    source: 'starter',
+    createdAt: V3_SEED_TIME,
+    updatedAt: V3_SEED_TIME,
   },
 ];
 
@@ -223,8 +246,63 @@ const KATAKANA_CARDS: VocabCard[] = KATAKANA_46.map(([ch, romaji, guide, ex, exV
   })
 );
 
+function padLesson(n: number): string {
+  return `bai-${String(n).padStart(2, '0')}`;
+}
+
+const N5_VOCAB_CARDS: VocabCard[] = N5_MINNA_VOCAB.map((entry, idx) =>
+  makeCard(
+    `jp-n5v-${String(idx + 1).padStart(3, '0')}`,
+    'deck-jp-n5-minna-vocab',
+    'jp',
+    entry.kana,
+    entry.meaningVi,
+    {
+      reading: entry.kana,
+      romaji: entry.romaji,
+      example: entry.example,
+      exampleVi: entry.exampleVi,
+      notes: [
+        `Bài ${entry.lesson}`,
+        entry.kanji ? `Kanji: ${entry.kanji}` : '',
+        entry.pos,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      tags: ['n5-vocab', 'minna-1', padLesson(entry.lesson)],
+      due: V3_SEED_TIME + idx,
+      createdAt: V3_SEED_TIME,
+      updatedAt: V3_SEED_TIME,
+    }
+  )
+);
+
+const N5_KANJI_CARDS: VocabCard[] = N5_MINNA_KANJI.map((entry, idx) => {
+  const readingParts = [entry.onyomi, entry.kunyomi].filter(Boolean).join(' / ');
+  return makeCard(
+    `jp-n5k-${String(idx + 1).padStart(3, '0')}`,
+    'deck-jp-n5-kanji',
+    'jp',
+    entry.kanji,
+    `${entry.hanViet} — ${entry.meaningVi}`,
+    {
+      reading: readingParts,
+      romaji: entry.romaji,
+      example: entry.example,
+      exampleVi: entry.exampleVi,
+      notes: `Bài ${entry.lesson} · ${entry.strokes} nét · ${entry.mnemonic}`,
+      tags: ['n5-kanji', 'kanji', 'minna-1', padLesson(entry.lesson)],
+      due: V3_SEED_TIME + idx,
+      createdAt: V3_SEED_TIME,
+      updatedAt: V3_SEED_TIME,
+    }
+  );
+});
+
 export const STARTER_CARDS: VocabCard[] = [
   ...ENGLISH_LEARN_CARDS,
   ...HIRAGANA_CARDS,
   ...KATAKANA_CARDS,
+  ...N5_VOCAB_CARDS,
+  ...N5_KANJI_CARDS,
 ];
